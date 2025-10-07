@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Página Inicial - Meu App Flask{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Bem-vindo ao Meu App Moderno!</h1>
+    <p class="lead">Este é um exemplo de layout Flask com Bootstrap, otimizado para dispositivos móveis.</p>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-4">
+        <div class="col">
+            <div class="card bg-secondary text-white h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Recurso 1</h5>
+                    <p class="card-text">Descrição breve do recurso um. É responsivo e fica ótimo em qualquer tela.</p>
+                    <a href="#" class="btn btn-primary">Saiba Mais</a>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-secondary text-white h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Recurso 2</h5>
+                    <p class="card-text">Outro recurso incrível que se adapta perfeitamente ao seu celular.</p>
+                    <a href="#" class="btn btn-primary">Explorar</a>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-secondary text-white h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Recurso 3</h5>
+                    <p class="card-text">Mais funcionalidades para você, com um design limpo e intuitivo.</p>
+                    <a href="#" class="btn btn-primary">Ver Detalhes</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
