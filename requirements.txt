@@ -1,3 +1,1 @@
-streamlit
-gspread
-pandas
+Flask
