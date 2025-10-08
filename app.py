@@ -13,7 +13,7 @@ SPREADSHEET_ID = '171LrxIb7IhCnYTP3rV7WaUGp0_mBaO2pX9cS0va6JJs'
 # SUBSTITUA PELO NOME DA SUA ABA
 WORKSHEET_NAME = 'SEI'
 # Caminho para o arquivo de credenciais
-CREDENTIALS_FILE = '/user/francislley/files/home/francislley/dashboard-sei-flask/dashboard-sei-flask/dashboard-sei-8f0c2c70b56c.json'
+CREDENTIALS_FILE = '/home/francislley/dashboard-sei-flask/dashboard-sei-flask/dashboard-sei-8f0c2c70b56c.json'
 
 # --- Função para Carregar Dados Brutos da Planilha ---
 # Esta função será chamada sempre que precisarmos dos dados brutos.
