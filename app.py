@@ -13,11 +13,9 @@ SPREADSHEET_ID = '171LrxIb7IhCnYTP3rV7WaUGp0_mBaO2pX9cS0va6JJs'
 # SUBSTITUA PELO NOME DA SUA ABA
 WORKSHEET_NAME = 'SEI'
 # Caminho para o arquivo de credenciais
-CREDENTIALS_FILE = '/home/francislley/dashboard-sei-flask/dashboard-sei-flask/dashboard-sei-8f0c2c70b56c.json'
+CREDENTIALS_FILE = '/home/francislley/dashboard-sei-flask/dashboard-sei-flask/dashboard-sei-8f0c2c70b56c.json' # Caminho absoluto
 
 # --- Função para Carregar Dados Brutos da Planilha ---
-# Esta função será chamada sempre que precisarmos dos dados brutos.
-# Para grandes planilhas, considere implementar um cache para evitar re-leitura constante.
 def load_raw_data_from_sheet():
     try:
         gc = gspread.service_account(filename=CREDENTIALS_FILE)
@@ -33,14 +31,16 @@ def load_raw_data_from_sheet():
         # Converter coluna 'Data' para datetime, se existir
         if 'Data' in df.columns:
             # Tenta converter para datetime, erros resultam em NaT (Not a Time)
-            # Assumindo formato YYYY-MM-DD ou MM-DD-YYYY, ajuste dayfirst=True se for DD-MM-YYYY
-            df['Data'] = pd.to_datetime(df['Data'], errors='coerce', dayfirst=False)
+            # Usar infer_datetime_format=True pode ajudar a detectar formatos comuns como DD/MM/AAAA ou YYYY-MM-DD
+            df['Data'] = pd.to_datetime(df['Data'], errors='coerce', dayfirst=True, infer_datetime_format=True)
             # Formata de volta para string YYYY-MM-DD para consistência com JS
             df['Data'] = df['Data'].dt.strftime('%Y-%m-%d').replace({pd.NA: None})
 
         return df
     except Exception as e:
         print(f"Erro ao carregar dados da planilha: {e}")
+        # Para depuração, você pode querer levantar a exceção ou retornar um DataFrame vazio
+        # raise e # Descomente para ver o traceback completo no log
         return pd.DataFrame() # Retorna DataFrame vazio em caso de erro
 
 # --- Função para Derivar Sigla (deve ser consistente com o frontend) ---
@@ -49,12 +49,13 @@ def derive_sigla(unidade):
     if not u:
         return ''
 
+    # Se houver um hífen, retorna a parte após o primeiro hífen
     hyphen_index = u.find('-')
     if hyphen_index != -1:
         return u[hyphen_index + 1:].strip()
-
-    # Divide por espaços, barras ou hífens e filtra vazios
-    parts = [w for w in u.split(' ') if w] # Ajustado para split por espaço, depois filtra
+    
+    # Se não houver hífen, tenta derivar as iniciais como antes (fallback)
+    parts = [w for w in u.split(' ') if w]
     initials = ''.join([w[0].upper() for w in parts if len(w) >= 3 and w[0].isalpha()])
     if initials:
         return initials
@@ -79,7 +80,12 @@ def process_dashboard_data(df_raw, filters=None):
         selected_values = filters.get(field, [])
         if selected_values:
             # As colunas na planilha são 'Unidade', 'Sigla', 'Usuario' (com maiúscula)
-            df = df[df[field.capitalize()].isin(selected_values)]
+            col_name = field.capitalize()
+            if col_name in df.columns:
+                df = df[df[col_name].isin(selected_values)]
+            else:
+                # Se a coluna não existe, o filtro não pode ser aplicado, mas não causa erro
+                print(f"Aviso: Coluna '{col_name}' não encontrada no DataFrame para filtro. Ignorando filtro.")
 
     # 3. Aplicar Filtro de Data (selectedDateString)
     selected_date_str = filters.get('selectedDateString')
@@ -89,6 +95,7 @@ def process_dashboard_data(df_raw, filters=None):
         df = df[df_date_str == selected_date_str]
 
     # --- Calcular KPIs ---
+    # Adicionando verificação de existência de coluna para KPIs
     total_processos = df['Processo'].nunique() if 'Processo' in df.columns else 0
     total_documentos = len(df) # Contagem de linhas após filtros
     total_unidades = df['Unidade'].nunique() if 'Unidade' in df.columns else 0
@@ -111,12 +118,10 @@ def process_dashboard_data(df_raw, filters=None):
             # Se a coluna 'Sigla' existe e há uma sigla associada a esta unidade
             if 'Sigla' in df.columns:
                 # Pega a primeira sigla associada a esta unidade no DataFrame filtrado
-                # Isso assume que cada unidade tem uma sigla consistente.
-                # Se uma unidade pode ter múltiplas siglas, a lógica precisaria ser mais complexa.
-                sigla_from_df = df[df['Unidade'] == unidade_completa]['Sigla'].dropna().iloc[0] if not df[df['Unidade'] == unidade_completa]['Sigla'].dropna().empty else None
-                if sigla_from_df:
-                    sigla_original = sigla_from_df
-            
+                sigla_series = df[df['Unidade'] == unidade_completa]['Sigla'].dropna()
+                if not sigla_series.empty:
+                    sigla_original = sigla_series.iloc[0] # Pega a primeira sigla encontrada
+
             # Se não encontrou uma sigla original ou a coluna 'Sigla' não existe, deriva
             if not sigla_original:
                 sigla_original = derive_sigla(unidade_completa)
@@ -133,7 +138,7 @@ def process_dashboard_data(df_raw, filters=None):
 
     # --- Dados para Gráfico de Barras (Documentos por Usuário) ---
     bar_chart_data = []
-    if 'Usuario' in df.columns:
+    if 'Usuario' in df.columns: # Verificação de existência da coluna
         usuario_counts = df['Usuario'].value_counts().reset_index()
         usuario_counts.columns = ['Usuario', 'Count']
         bar_chart_data = [
@@ -145,8 +150,10 @@ def process_dashboard_data(df_raw, filters=None):
 
     # --- Dados para Tabela ---
     # Seleciona as colunas na ordem desejada e converte para lista de dicionários
-    table_columns = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'Data']
-    table_data = df[[col for col in table_columns if col in df.columns]].to_dict(orient='records')
+    table_columns_order = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'Data']
+    # Filtra apenas as colunas que realmente existem no DataFrame
+    existing_table_columns = [col for col in table_columns_order if col in df.columns]
+    table_data = df[existing_table_columns].to_dict(orient='records')
 
     return {
         'totalProcessos': total_processos,
@@ -179,7 +186,6 @@ def get_initial_data():
     initial_dashboard_data = process_dashboard_data(df_raw)
 
     return jsonify({
-        # rawData não é mais enviado para o frontend, o backend sempre recarrega/processa
         'filterOptions': filter_options,
         'initialDashboardData': initial_dashboard_data
     })
@@ -193,6 +199,4 @@ def get_filtered_data():
 
 # --- Execução Local (para testes) ---
 if __name__ == '__main__':
-    # Para rodar localmente, certifique-se de ter o credentials.json na mesma pasta
-    # e as libs instaladas (pip install Flask gspread pandas)
     app.run(debug=True, host='0.0.0.0')

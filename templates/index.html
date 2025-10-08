@@ -658,7 +658,7 @@
           locale: "pt", // Define o local para Português
           dateFormat: "Y-m-d", // Formato interno (ISO para fácil processamento)
           altInput: true, // Habilita um campo de entrada alternativo (somente leitura)
-          altFormat: "d \d\e F \d\e Y", // Formato amigável para o usuário (ex: 24 de Setembro de 2023)
+          altFormat: "d/m/Y", // Formato amigável para o usuário (ex: 06/10/2025)
           onClose: function(selectedDates, dateStr, instance) {
               if (selectedDates.length > 0) {
                   state.selectedFlatpickrDate = selectedDates[0];
@@ -910,13 +910,14 @@
               edgeDistance: '5%', // Distância da borda do gráfico
               color: '#e5e7eb',
               formatter: '{b}', // Echarts usa 'name' para {b}
-              overflow: 'break' // Tenta quebrar a linha se o texto for longo
+              // overflow: 'break' // REMOVIDO para evitar quebra de linha
             },
             labelLine: {
               show: true,
-              length: 15, // Aumenta o comprimento da primeira parte da linha
-              length2: 25, // Aumenta o comprimento da segunda parte da linha
-              smooth: true // Linhas mais suaves
+              length: 15,
+              length2: 25,
+              smooth: true,
+              minTurnAngle: 30 // Evita curvas muito fechadas para os labels
             },
             data: pieData // Usa os dados Top N
           }
@@ -940,28 +941,6 @@
     function renderPieFromState() {
       applyFiltersAndRender();
     }
-
-    // Função para derivar a sigla (copiada do backend para uso no frontend, para a UI)
-    // ESTA FUNÇÃO PRECISA SER IDÊNTICA À DO BACKEND PARA CONSISTÊNCIA
-    function deriveSigla(unidade) {
-      const u = String(unidade || '').trim();
-      if (!u) return '';
-
-      const hyphenIndex = u.indexOf('-');
-      if (hyphenIndex !== -1) {
-        return u.substring(hyphenIndex + 1).trim();
-      }
-
-      const parts = u.split(/[\s/|-]+/).filter(Boolean);
-      const initials = parts
-        .filter(w => w.length >= 3)
-        .slice(0, 4)
-        .map(w => w[0].toUpperCase())
-        .join('');
-      if (initials) return initials;
-      return u.substring(0, 3).toUpperCase();
-    }
-
 
     // Barras — documentos por Usuário
     function renderBar(fullAggregatedData) { // Agora recebe DADOS COMPLETOS e já ordenados do backend
@@ -1005,7 +984,7 @@
           axisLabel: {
             color: '#cbd5e1',
             width: axisLabelWidth,
-            overflow: 'truncate'
+            // overflow: 'truncate' // REMOVIDO para mostrar nome completo
           }
         },
         series: [
@@ -1043,17 +1022,34 @@
       const rows = dataRows.slice(0, 300); // Exibe até 300 para manter a leveza
       const frag = document.createDocumentFragment();
       dom.tbody.innerHTML = '';
+      // Cabeçalhos da tabela (assumindo que dataRows[0] tem as chaves)
+      if (rows.length > 0) {
+          const headerRow = document.createElement('tr');
+          for (const key in rows[0]) {
+              if (key === 'CPF') { // Oculta a coluna CPF no cabeçalho
+                  headerRow.innerHTML += `<th class="cpf-column">${escapeHtml(key)}</th>`;
+              } else {
+                  headerRow.innerHTML += `<th>${escapeHtml(key)}</th>`;
+              }
+          }
+          // dom.tbody.parentNode.querySelector('thead tr').innerHTML = headerRow.innerHTML; // Isso sobrescreveria o thead estático
+          // Melhor manter o thead estático e garantir que as colunas do tbody correspondam
+      }
+
+
       for (const r of rows) {
         const tr = document.createElement('tr');
+        // A ordem das células deve corresponder à ordem dos cabeçalhos estáticos no HTML
+        // e também à ordem das colunas retornadas pelo backend (existing_table_columns)
         tr.innerHTML = `
-          <td>${escapeHtml(r.Processo)}</td>
-          <td>${escapeHtml(r.Documento)}</td>
-          <td>${escapeHtml(r.Descricao)}</td>
-          <td>${escapeHtml(r.Unidade)}</td>
-          <td>${escapeHtml(r.Sigla)}</td>
-          <td>${escapeHtml(r.Usuario)}</td>
-          <td class="cpf-column">${escapeHtml(r.CPF)}</td>
-          <td class="muted">${formatDateForDisplay(r.Data)}</td>
+          <td>${escapeHtml(r.Processo || '')}</td>
+          <td>${escapeHtml(r.Documento || '')}</td>
+          <td>${escapeHtml(r.Descricao || '')}</td>
+          <td>${escapeHtml(r.Unidade || '')}</td>
+          <td>${escapeHtml(r.Sigla || '')}</td>
+          <td>${escapeHtml(r.Usuario || '')}</td>
+          <td class="cpf-column">${escapeHtml(r.CPF || '')}</td>
+          <td class="muted">${formatDateForDisplay(r.Data || '')}</td>
         `;
         frag.appendChild(tr);
       }
@@ -1069,7 +1065,7 @@
       dom.tbody.appendChild(frag);
     }
     
-    // Utilitário para formatar datas para exibição em pt-BR (corrigido para o problema do dia)
+    // Utilitário para formatar datas para exibição em pt-BR
     function formatDateForDisplay(dateString) {
         if (!dateString) return '';
         try {
