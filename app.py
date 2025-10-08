@@ -97,17 +97,37 @@ def process_dashboard_data(df_raw, filters=None):
     # --- Dados para Gráfico de Donut (Distribuição por Unidade/Sigla) ---
     donut_chart_data = []
     if 'Unidade' in df.columns:
+        # Agrega por Unidade para obter a contagem
         unidade_counts = df['Unidade'].value_counts().reset_index()
         unidade_counts.columns = ['Unidade', 'Count']
-        donut_chart_data = [
-            {
-                'name': derive_sigla(row['Unidade']), # Sigla para o gráfico
-                'value': row['Count'],
-                'unidadeCompleta': row['Unidade'],
-                'siglaOriginal': row['Sigla'] if 'Sigla' in df.columns else derive_sigla(row['Unidade']) # Mantém a sigla original da planilha ou deriva
-            }
-            for index, row in unidade_counts.iterrows()
-        ]
+
+        # Prepara os dados para o gráfico
+        for index, row in unidade_counts.iterrows():
+            unidade_completa = row['Unidade']
+            count = row['Count']
+            sigla_original = None
+
+            # Tenta obter a Sigla diretamente do DataFrame principal 'df'
+            # Se a coluna 'Sigla' existe e há uma sigla associada a esta unidade
+            if 'Sigla' in df.columns:
+                # Pega a primeira sigla associada a esta unidade no DataFrame filtrado
+                # Isso assume que cada unidade tem uma sigla consistente.
+                # Se uma unidade pode ter múltiplas siglas, a lógica precisaria ser mais complexa.
+                sigla_from_df = df[df['Unidade'] == unidade_completa]['Sigla'].dropna().iloc[0] if not df[df['Unidade'] == unidade_completa]['Sigla'].dropna().empty else None
+                if sigla_from_df:
+                    sigla_original = sigla_from_df
+            
+            # Se não encontrou uma sigla original ou a coluna 'Sigla' não existe, deriva
+            if not sigla_original:
+                sigla_original = derive_sigla(unidade_completa)
+            
+            donut_chart_data.append({
+                'name': derive_sigla(unidade_completa), # Sigla para o gráfico (derivada para exibição)
+                'value': count,
+                'unidadeCompleta': unidade_completa,
+                'siglaOriginal': sigla_original # A sigla original ou derivada para o filtro
+            })
+        
         # Ordena por valor (Count) decrescente
         donut_chart_data = sorted(donut_chart_data, key=lambda x: x['value'], reverse=True)
 
