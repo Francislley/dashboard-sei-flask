@@ -1,178 +1,1152 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard SEI</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-    <!-- Plotly.js CDN -->
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <style>
-        body {
-            background-color: #f8f9fa; /* Light gray background */
-        }
-        .navbar {
-            background-color: #007bff; /* Primary blue for navbar */
-        }
-        .navbar-brand {
-            color: #fff !important;
-            font-weight: bold;
-        }
-        .card {
-            border: none;
-            border-radius: 0.75rem;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
-            margin-bottom: 1.5rem;
-        }
-        .card-header {
-            background-color: #e9ecef;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.125);
-            font-weight: bold;
-            color: #343a40;
-        }
-        .chart-container {
-            min-height: 300px; /* Ensure charts have enough space */
-        }
-        .table-responsive {
-            max-height: 400px; /* Limit height of the table for scrolling */
-            overflow-y: auto;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard SEI - SMCL</title>
+  <!-- ECharts para gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <!-- Flatpickr CSS (para o calendário) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  
+  <style>
+    :root {
+      --bg: #0f172a;           /* fundo app dark elegante */
+      --card: #111827;         /* cards */
+      --muted: #9ca3af;        /* textos secundários */
+      --text: #f3f4f6;         /* texto principal */
+      --primary: #3b82f6;      /* cor destaque (azul) */
+      --primary-strong: #2563eb;
+      --accent: #22c55e;       /* para FAB ou estados ok */
+      --danger: #ef4444;       /* opcional */
+      --border: #1f2937;
+      --chip-bg: #1f2937;
+      --chip-text: #cbd5e1;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 14px;
+      --gap: 16px;
+      --gap-sm: 10px;
+      --gap-lg: 20px;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      font-size: clamp(14px, 1.8vw, 16px);
+      line-height: 1.4;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    header.app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--gap);
+      margin-bottom: 12px;
+      padding: 8px 0;
+    }
+    .title {
+      font-size: clamp(18px, 3.6vw, 28px);
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr)); /* Default for large screens */
+      gap: var(--gap);
+      margin: 10px 0 18px 0;
+    }
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+    .kpi .label { color: var(--muted); font-size: 13px; }
+    .kpi .value { font-size: clamp(18px, 3.2vw, 26px); font-weight: 700; margin-top: 4px; }
+
+    /* Campo de Busca Rápida acima da tabela */
+    .search-global {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      margin: 8px 0 18px 0;
+      box-shadow: var(--shadow);
+    }
+    .search-global input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      outline: none;
+      font-size: 15px;
+    }
+    .search-global .icon {
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    /* Filtros */
+    .filters {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+    .filters-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .filters-title { font-weight: 600; }
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr)); /* Default for large screens */
+      gap: var(--gap);
+      align-items: start;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* Combo Multi (digitável + seta) */
+    .combo {
+      position: relative;
+      background: #101826;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      min-height: 44px;
+      padding: 6px 40px 6px 10px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      cursor: text;
+    }
+    .combo input.combo-input {
+      flex: 1;
+      min-width: 120px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      outline: none;
+      font-size: 14px;
+      padding: 6px 0;
+    }
+    .combo .dropdown-toggle {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      bottom: 8px;
+      width: 28px;
+      border: none;
+      background: #0b1220;
+      color: var(--muted);
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .combo-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-height: 260px;
+      overflow: auto;
+      box-shadow: var(--shadow);
+      z-index: 20;
+      display: none;
+    }
+    .combo-menu.open { display: block; }
+    .combo-option {
+      padding: 10px 12px;
+      border-bottom: 1px solid #101826;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .combo-option:last-child { border-bottom: none; }
+    .combo-option:hover { background: #0f172a; }
+    /* Estilo para opção de combo selecionada */
+    .combo-option.selected {
+      color: var(--primary);
+      position: relative;
+      padding-right: 30px; /* Espaço para o ícone */
+    }
+    .combo-option.selected::after {
+      content: '✓'; /* Ícone de check */
+      position: absolute;
+      right: 12px;
+      color: var(--accent); /* Cor verde para o check */
+      font-weight: bold;
+    }
+
+    .chip {
+      background: var(--chip-bg);
+      color: var(--chip-text);
+      font-size: 12px;
+      border-radius: 999px;
+      padding: 4px 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chip button {
+      background: transparent;
+      border: none;
+      color: var(--chip-text);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .date-filter-group { /* Novo estilo para o campo de data e botão de limpar */
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .date-filter-group .flatpickr-input {
+      flex-grow: 1;
+      background: #101826;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    .date-filter-group .btn-ghost {
+      padding: 8px 12px;
+      font-size: 14px;
+      height: 44px; /* Garante altura similar ao input */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .btn {
+      background: #0b1220;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary-strong);
+    }
+    .btn-primary:hover { background: var(--primary-strong); }
+    /* Efeito de clique para botões primários */
+    .btn-primary:active {
+      transform: translateY(1px);
+      box-shadow: none;
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px dashed var(--border);
+    }
+    /* Estilos de foco para inputs e botões */
+    input:focus, button:focus, .combo:focus-within, .flatpickr-input:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--primary-strong); /* Anel de foco azul */
+    }
+
+    /* Cards de gráficos centralizados */
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin: 16px auto;
+      padding: 12px;
+      box-shadow: var(--shadow);
+      max-width: 1000px;
+    }
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--gap-sm);
+      margin-bottom: 8px;
+    }
+    .chart-title { font-weight: 600; }
+    .topn {
+      display: inline-flex;
+      gap: 6px;
+      background: #0b1220;
+      padding: 6px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+    .topn button {
+      background: transparent;
+      color: var(--text);
+      border: none;
+      padding: 6px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .topn button.active {
+      background: var(--primary);
+      color: white; /* Garante que o texto fique branco */
+      font-weight: 700; /* Mais destaque para o botão ativo */
+    }
+    /* Efeito de toque para botões TopN */
+    .topn button:active {
+      background: var(--primary-strong);
+      transform: scale(0.98);
+      transition: transform 0.1s ease-out;
+    }
+
+    /* Alturas dos gráficos (donut maior) */
+    #pieChart {
+      height: clamp(320px, 48vw, 460px);
+      width: 85%; /* Gráfico de donut ocupa 85% do card */
+      margin: 0 auto; /* Centraliza o gráfico dentro do card */
+    }
+    #barChart { height: clamp(340px, 52vw, 520px); }
+
+    /* Tabela */
+    .table-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin: 16px 0 90px 0; /* espaço para FAB */
+      padding: 12px;
+      box-shadow: var(--shadow);
+      max-height: 50vh; /* Altura máxima para ativar scroll vertical */
+      overflow-y: auto; /* Adiciona scroll vertical se necessário */
+      overflow-x: auto; /* Permite rolagem horizontal se a tabela for muito larga */
+      -webkit-overflow-scrolling: touch; /* Melhora a rolagem em iOS */
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    thead th {
+      text-align: left;
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
+      position: sticky;
+      top: 0;
+      background: var(--card);
+      z-index: 5;
+      white-space: nowrap; /* Evita quebra de linha no cabeçalho */
+    }
+    tbody td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
+      vertical-align: top;
+      white-space: nowrap; /* Evita quebra de linha nas células */
+    }
+    .muted { color: var(--muted); }
+    .cpf-column { /* Oculta a coluna CPF */
+      display: none;
+    }
+
+    /* FAB - Limpar filtros */
+    .fab {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 999px;
+      padding: 14px 16px;
+      font-weight: 600;
+      box-shadow: var(--shadow);
+      display: none; /* aparece quando houver filtros ativos */
+      z-index: 100;
+      cursor: pointer;
+    }
+    .fab.show { display: inline-flex; align-items: center; gap: 8px; }
+
+
+    /* Flatpickr Dark Theme (sobrescrevendo default) */
+    .flatpickr-calendar {
+        background-color: var(--card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        color: var(--text);
+    }
+    .flatpickr-months .flatpickr-month {
+        color: var(--text);
+    }
+    .flatpickr-current-month .numInputWrapper span.arrowUp:after,
+    .flatpickr-current-month .numInputWrapper span.arrowDown:after {
+        border-color: var(--text) transparent transparent transparent;
+    }
+    .flatpickr-weekday {
+        color: var(--muted);
+    }
+    .dayContainer span.flatpickr-day,
+    .dayContainer span.flatpickr-day.prevMonthDay,
+    .dayContainer span.flatpickr-day.nextMonthDay {
+        color: var(--text);
+    }
+    .dayContainer span.flatpickr-day.today {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+    .dayContainer span.flatpickr-day.selected,
+    .dayContainer span.flatpickr-day.selected:hover {
+        background-color: var(--accent); /* Selected day highlight */
+        border-color: var(--accent);
+        color: white;
+    }
+    .dayContainer span.flatpickr-day:hover {
+        background-color: var(--border);
+    }
+
+    /* Responsividade mobile */
+    @media (max-width: 860px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 2 cards por linha em telas menores que 860px */
+      .filters-grid { grid-template-columns: 1fr; } /* Um filtro por linha */
+      .chart-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .topn { align-self: stretch; justify-content: space-between; }
+    }
+    /* Mobile landscape and smaller tablets */
+    @media (max-width: 768px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 2 cards por linha */
+      .filters-grid { grid-template-columns: 1fr; } /* 1 filtro por linha */
+    }
+    @media (max-width: 520px) {
+      .kpis { grid-template-columns: 1fr 1fr; } /* Mantém 2 cards por linha */
+      .container { padding: 12px; }
+      .combo { min-height: 48px; }
+      .search-global { padding: 12px; }
+      #pieChart { height: 420px; }
+      #barChart { height: 460px; }
+      /* Ajuste de padding e font-size para células da tabela em telas pequenas */
+      tbody td, thead th {
+        padding: 8px 6px;
+        font-size: 13px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Dashboard SEI</a>
-        </div>
-    </nav>
+  <div class="container">
+    <header class="app-header">
+      <div class="title">Dashboard SEI</div>
+      <button id="btnClearTop" class="btn btn-primary">Limpar filtros</button>
+    </header>
 
-    <div class="container mt-4">
-        <h1 class="mb-4 text-center text-primary">Visão Geral da Planilha</h1>
+    <!-- KPIs -->
+    <section class="kpis">
+      <div class="kpi">
+        <div class="label">Processos</div>
+        <div id="kpiProcessos" class="value">–</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Documentos</div>
+        <div id="kpiDocumentos" class="value">–</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Unidades</div>
+        <div id="kpiUnidades" class="value">–</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Usuários</div>
+        <div id="kpiUsuarios" class="value">–</div>
+      </div>
+    </section>
 
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        Distribuição por Status
-                    </div>
-                    <div class="card-body">
-                        <div id="statusChart" class="chart-container"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        Distribuição por Tipo
-                    </div>
-                    <div class="card-body">
-                        <div id="typeChart" class="chart-container"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        Dados Completos da Planilha
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        {% if data %}
-                                            {% for key in data[0].keys() %}
-                                                <th scope="col">{{ key }}</th>
-                                            {% endfor %}
-                                        {% else %}
-                                            <th scope="col">Nenhum dado disponível</th>
-                                        {% endif %}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for row in data %}
-                                        <tr>
-                                            {% for value in row.values() %}
-                                                <td>{{ value }}</td>
-                                            {% endfor %}
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% if not data %}
-                            <p class="text-muted text-center">Nenhum dado encontrado ou erro ao carregar.</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Busca rápida acima da tabela -->
+    <div class="search-global">
+      <span class="icon">🔎</span>
+      <input id="inputSearch" type="text" placeholder="Busca rápida (Digite qualquer termo para filtrar os dados)..." />
     </div>
 
-    <!-- Bootstrap JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <!-- Filtros -->
+    <section class="filters">
+      <div class="filters-header">
+        <div class="filters-title">Filtros</div>
+        <div id="activeFilters" class="muted">0 filtros ativos</div>
+      </div>
 
-    <script>
-        // Recebe os dados do Flask (Jinja2)
-        var rawData = {{ data | tojson }};
+      <div class="filters-grid">
+        <!-- Unidade -->
+        <div class="field">
+          <div class="label">Unidade (multi)</div>
+          <div id="comboUnidade" class="combo">
+            <input class="combo-input" placeholder="Digite para filtrar ou selecione..." />
+            <button class="dropdown-toggle">▼</button>
+            <div class="combo-menu"></div>
+          </div>
+        </div>
 
-        // Função para preparar dados para gráficos
-        function prepareChartData(data, categoryField) {
-            var counts = {};
-            data.forEach(function(row) {
-                var category = row[categoryField];
-                if (category) { // Ignora valores vazios
-                    counts[category] = (counts[category] || 0) + 1;
-                }
-            });
-            return {
-                labels: Object.keys(counts),
-                values: Object.values(counts)
-            };
-        }
+        <!-- Sigla -->
+        <div class="field">
+          <div class="label">Sigla (multi)</div>
+          <div id="comboSigla" class="combo">
+            <input class="combo-input" placeholder="Digite para filtrar ou selecione..." />
+            <button class="dropdown-toggle">▼</button>
+            <div class="combo-menu"></div>
+          </div>
+        </div>
 
-        // Preparar dados para o gráfico de Status
-        var statusChartData = prepareChartData(rawData, 'Status'); // Altere 'Status' se sua coluna tiver outro nome
-        var statusTrace = {
-            labels: statusChartData.labels,
-            values: statusChartData.values,
-            type: 'pie',
-            hole: .4, // Para um gráfico de donut
-            name: 'Status'
-        };
-        var statusLayout = {
-            title: 'Distribuição por Status',
-            height: 300,
-            margin: {t: 40, b: 20, l: 20, r: 20}
-        };
-        Plotly.newPlot('statusChart', [statusTrace], statusLayout);
+        <!-- Usuário -->
+        <div class="field">
+          <div class="label">Usuário (multi)</div>
+          <div id="comboUsuario" class="combo">
+            <input class="combo-input" placeholder="Digite para filtrar ou selecione..." />
+            <button class="dropdown-toggle">▼</button>
+            <div class="combo-menu"></div>
+          </div>
+        </div>
 
-        // Preparar dados para o gráfico de Tipo
-        var typeChartData = prepareChartData(rawData, 'Tipo'); // Altere 'Tipo' se sua coluna tiver outro nome
-        var typeTrace = {
-            x: typeChartData.labels,
-            y: typeChartData.values,
-            type: 'bar',
-            name: 'Tipo',
-            marker: {
-                color: 'rgba(58,200,225,.5)',
-                line: {
-                    color: 'rgba(58,200,225,1)',
-                    width: 1
-                }
+        <!-- Data (com Flatpickr) -->
+        <div class="field">
+          <div class="label">Data (selecione um dia)</div>
+          <div class="date-filter-group">
+            <input type="text" id="filterDatePicker" class="flatpickr-input" placeholder="Selecione um dia" />
+            <button id="resetDateFilterBtn" class="btn btn-ghost" title="Limpar data">✖</button>
+          </div>
+        </div>
+
+        <!-- Botões -->
+        <div class="field">
+          <div class="label">&nbsp;</div>
+          <div class="btn-row">
+            <button id="btnApply" class="btn btn-primary">Aplicar filtros</button>
+            <button id="btnClear" class="btn">Limpar filtros</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gráfico Donut -->
+    <section class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Distribuição por Unidade</div>
+        <div class="topn" id="topnPie">
+          <button data-n="5" class="active">Top 5</button>
+          <button data-n="10">Top 10</button>
+          <button data-n="15">Top 15</button>
+          <button data-n="all">Todas</button>
+        </div>
+      </div>
+      <div id="pieChart"></div>
+    </section>
+
+    <!-- Gráfico Barras -->
+    <section class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Documentos por Usuário</div>
+        <div class="topn" id="topnBar">
+          <button data-n="5" class="active">Top 5</button>
+          <button data-n="10">Top 10</button>
+          <button data-n="15">Top 15</button>
+          <button data-n="all">Todos</button>
+        </div>
+      </div>
+      <div id="barChart"></div>
+    </section>
+
+    <!-- Tabela -->
+    <section class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Processo</th>
+            <th>Documento</th>
+            <th>Descrição</th>
+            <th>Unidade</th>
+            <th>Sigla</th>
+            <th>Usuário</th>
+            <th class="cpf-column">CPF</th> <!-- CPF oculto -->
+            <th class="muted">Data</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <!-- FAB Limpar filtros -->
+  <button id="fabClear" class="fab">
+    <span>✖</span> Limpar filtros
+  </button>
+
+  <!-- Flatpickr JS -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <!-- Flatpickr Portuguese Locale -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+
+  <script>
+    // Estado Global
+    const state = {
+      // 'raw' não é mais necessário no frontend, pois o backend sempre recarrega/processa
+      filtered: [], // Dados atualmente exibidos na tabela, após aplicação dos filtros
+      sets: { unidade: [], sigla: [], usuario: [] }, // Opções de filtro (todas as únicas)
+      selected: { unidade: new Set(), sigla: new Set(), usuario: new Set() }, // Opções selecionadas nos filtros
+      selectedFlatpickrDate: null, // Data selecionada no Flatpickr
+      search: '', // Termo de busca rápida
+      topNPie: '5', // Opção Top N para o gráfico de pizza
+      topNBar: '5' // Opção Top N para o gráfico de barras
+    };
+
+    // Referências DOM
+    const dom = {
+      kpiProcessos: document.getElementById('kpiProcessos'),
+      kpiDocumentos: document.getElementById('kpiDocumentos'),
+      kpiUnidades: document.getElementById('kpiUnidades'),
+      kpiUsuarios: document.getElementById('kpiUsuarios'),
+      inputSearch: document.getElementById('inputSearch'),
+      filterDatePicker: document.getElementById('filterDatePicker'),
+      resetDateFilterBtn: document.getElementById('resetDateFilterBtn'),
+      btnApply: document.getElementById('btnApply'),
+      btnClear: document.getElementById('btnClear'),
+      btnClearTop: document.getElementById('btnClearTop'),
+      fabClear: document.getElementById('fabClear'),
+      activeFilters: document.getElementById('activeFilters'),
+      tbody: document.getElementById('tbody'),
+      combos: {
+        unidade: document.getElementById('comboUnidade'),
+        sigla: document.getElementById('comboSigla'),
+        usuario: document.getElementById('comboUsuario')
+      },
+      topnPie: document.getElementById('topnPie'),
+      topnBar: document.getElementById('topnBar'),
+      pieChart: document.getElementById('pieChart'),
+      barChart: document.getElementById('barChart')
+    };
+
+    let pie, bar; // Instâncias dos gráficos ECharts
+    let datePickerInstance; // Instância do Flatpickr
+
+    // Inicialização do dashboard ao carregar a página
+    document.addEventListener('DOMContentLoaded', () => {
+      // Inicializa o Flatpickr
+      datePickerInstance = flatpickr(dom.filterDatePicker, {
+          locale: "pt", // Define o local para Português
+          dateFormat: "Y-m-d", // Formato interno (ISO para fácil processamento)
+          altInput: true, // Habilita um campo de entrada alternativo (somente leitura)
+          altFormat: "d \d\e F \d\e Y", // Formato amigável para o usuário (ex: 24 de Setembro de 2023)
+          onClose: function(selectedDates, dateStr, instance) {
+              if (selectedDates.length > 0) {
+                  state.selectedFlatpickrDate = selectedDates[0];
+              } else {
+                  state.selectedFlatpickrDate = null;
+              }
+              updateFabAndCounter();
+              // Não chama applyFiltersAndRender() aqui para esperar o botão "Aplicar filtros"
+          }
+      });
+
+      // Evento para limpar o filtro de data
+      dom.resetDateFilterBtn.addEventListener('click', () => {
+          datePickerInstance.clear(); // Limpa a data selecionada no Flatpickr
+          state.selectedFlatpickrDate = null;
+          updateFabAndCounter();
+          applyFiltersAndRender(); // Re-aplica filtros para mostrar todos os dados
+      });
+
+      // Carrega os dados iniciais e opções de filtro uma única vez do backend
+      // ALTERADO: Usando fetch para a rota Flask /api/initial_data
+      fetch('/api/initial_data')
+        .then(response => response.json())
+        .then(onInitialDataLoaded)
+        .catch(error => {
+          console.error('Erro ao carregar dados iniciais:', error);
+          alert('Erro ao carregar dados iniciais do servidor.');
+        });
+
+      // Eventos globais para busca e botões de filtro
+      dom.inputSearch.addEventListener('input', debounce(() => {
+        state.search = dom.inputSearch.value.trim().toLowerCase();
+        // Não chama applyFiltersAndRender() aqui para esperar o botão "Aplicar filtros"
+      }, 200));
+
+      dom.btnApply.addEventListener('click', () => applyFiltersAndRender());
+      dom.btnClear.addEventListener('click', clearAll);
+      dom.btnClearTop.addEventListener('click', clearAll);
+      dom.fabClear.addEventListener('click', clearAll);
+
+      // Controles para Top N dos gráficos (Pizza e Barras)
+      dom.topnPie.addEventListener('click', (e) => {
+        const n = e.target?.dataset?.n;
+        if (!n) return;
+        state.topNPie = n;
+        [...dom.topnPie.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b.dataset.n === n));
+        applyFiltersAndRender(); // Re-aplica filtros para re-renderizar o gráfico com o novo Top N
+      });
+      dom.topnBar.addEventListener('click', (e) => {
+        const n = e.target?.dataset?.n;
+        if (!n) return;
+        state.topNBar = n;
+        [...dom.topnBar.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b.dataset.n === n));
+        applyFiltersAndRender(); // Re-aplica filtros para re-renderizar o gráfico com o novo Top N
+      });
+
+      // Redimensionamento dos gráficos ao redimensionar a janela
+      window.addEventListener('resize', debounce(() => {
+        resizeCharts();
+      }, 150));
+    });
+
+    // Função para lidar com a carga inicial de TODOS os dados e opções de filtro do backend
+    function onInitialDataLoaded(res) {
+      if (!res || res.error) { // Verifica se há um erro retornado pelo Flask
+        alert('Erro ao carregar dados iniciais: ' + (res?.error || 'Resposta vazia.'));
+        return;
+      }
+      
+      // Popula as opções de filtro com dados únicos do backend
+      state.sets.unidade = res.filterOptions.unidades;
+      state.sets.sigla   = res.filterOptions.siglas;
+      state.sets.usuario = res.filterOptions.usuarios;
+
+      // Monta os combos de filtro com TODAS as opções possíveis
+      makeCombo(dom.combos.unidade, state.sets.unidade, state.selected.unidade, () => updateFabAndCounter());
+      makeCombo(dom.combos.sigla, state.sets.sigla, state.selected.sigla, () => updateFabAndCounter());
+      makeCombo(dom.combos.usuario, state.sets.usuario, state.selected.usuario, () => updateFabAndCounter());
+
+      // Renderiza o dashboard com os dados iniciais (já processados pelo backend sem filtros)
+      updateDashboardUI(res.initialDashboardData);
+    }
+
+    // Função para atualizar a UI do dashboard com os dados recebidos do backend
+    function updateDashboardUI(dashboardData) {
+      state.filtered = dashboardData.tableData; // Atualiza os dados filtrados no estado do frontend
+      updateKPIs(dashboardData);
+      renderPie(dashboardData.donutChartData); // Passa os dados COMPLETOs do donut chart
+      renderBar(dashboardData.barChartData); // Passa os dados COMPLETOs do bar chart
+      renderTable(dashboardData.tableData);
+      updateFabAndCounter();
+    }
+
+    // Combo Multi (digitável + seta + chips) - Lógica de UI para os filtros
+    function makeCombo(root, options, selectedSet, onChange) {
+      const input = root.querySelector('.combo-input');
+      const toggle = root.querySelector('.dropdown-toggle');
+      const menu = root.querySelector('.combo-menu');
+
+      function renderMenu(filter = '') {
+        const f = filter.toLowerCase();
+        menu.innerHTML = '';
+        const opts = options.filter(o => o.toLowerCase().includes(f));
+        if (opts.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'combo-option';
+          empty.textContent = 'Sem opções';
+          empty.style.color = 'var(--muted)';
+          menu.appendChild(empty);
+        } else {
+          opts.forEach(opt => {
+            const div = document.createElement('div');
+            div.className = 'combo-option';
+            div.textContent = opt;
+            if (selectedSet.has(opt)) {
+              div.classList.add('selected');
             }
-        };
-        var typeLayout = {
-            title: 'Contagem por Tipo',
-            height: 300,
-            margin: {t: 40, b: 20, l: 20, r: 20}
-        };
-        Plotly.newPlot('typeChart', [typeTrace], typeLayout);
+            div.addEventListener('click', () => {
+              if (selectedSet.has(opt)) selectedSet.delete(opt);
+              else selectedSet.add(opt);
+              renderChips();
+              renderMenu(input.value);
+              onChange && onChange();
+            });
+            menu.appendChild(div);
+          });
+        }
+      }
 
-    </script>
+      function renderChips() {
+        [...root.querySelectorAll('.chip')].forEach(c => c.remove());
+        selectedSet.forEach(val => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.innerHTML = `${escapeHtml(val)} <button title="Remover">×</button>`;
+          chip.querySelector('button').addEventListener('click', (e) => {
+            e.stopPropagation(); // Evita que o clique no botão de remover feche o menu
+            selectedSet.delete(val);
+            renderChips();
+            renderMenu(input.value);
+            onChange && onChange();
+          });
+          root.insertBefore(chip, input);
+        });
+      }
+
+      root.addEventListener('click', (e) => {
+        if (e.target === toggle) {
+          menu.classList.toggle('open');
+          if (menu.classList.contains('open')) {
+            renderMenu(input.value);
+            input.focus();
+          }
+        } else if (e.target !== input && !Array.from(root.querySelectorAll('.chip button')).includes(e.target)) {
+          // Garante que o menu abre ao clicar em qualquer lugar do combo, exceto input e botões de chip
+          menu.classList.add('open');
+          renderMenu(input.value);
+          input.focus();
+        }
+      });
+
+      input.addEventListener('input', () => {
+        menu.classList.add('open');
+        renderMenu(input.value);
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!root.contains(e.target)) {
+          menu.classList.remove('open');
+        }
+      });
+
+      renderChips();
+      renderMenu('');
+    }
+
+    // Chamada ao backend para aplicar filtros nos dados brutos e renderizar a UI
+    function applyFiltersAndRender() {
+      // Prepara os filtros para enviar ao backend
+      let filters = {
+        unidade: Array.from(state.selected.unidade),
+        sigla: Array.from(state.selected.sigla),
+        usuario: Array.from(state.selected.usuario),
+        quickSearch: state.search
+      };
+
+      // Tratamento de data (Flatpickr) - Envia YYYY-MM-DD para o backend
+      if (state.selectedFlatpickrDate) {
+          filters.selectedDateString = flatpickr.formatDate(state.selectedFlatpickrDate, "Y-m-d");
+      } else {
+          filters.selectedDateString = null;
+      }
+
+      // ALTERADO: Usando fetch para a rota Flask /api/filter_data
+      fetch('/api/filter_data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(filters),
+      })
+      .then(response => response.json())
+      .then(updateDashboardUI)
+      .catch(error => {
+        console.error('Erro ao aplicar filtros:', error);
+        alert('Erro ao aplicar filtros do servidor.');
+      });
+    }
+
+    // Atualiza os KPIs na UI
+    function updateKPIs(data) {
+      dom.kpiProcessos.textContent = data.totalProcessos;
+      dom.kpiDocumentos.textContent = data.totalDocumentos;
+      dom.kpiUnidades.textContent = data.totalUnidades;
+      dom.kpiUsuarios.textContent = data.totalUsuarios;
+    }
+
+    // Pie (Donut) — distribuição por Unidade
+    function renderPie(fullAggregatedData) { // Agora recebe DADOS COMPLETOS e já ordenados do backend
+      if (!pie) pie = echarts.init(dom.pieChart);
+      
+      let pieData = [...fullAggregatedData]; // Cria uma cópia para aplicar o Top N localmente
+
+      // Aplica a lógica Top N localmente no frontend
+      const n = state.topNPie === 'all' ? pieData.length : Number(state.topNPie);
+      pieData = pieData.slice(0, n);
+
+      const option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          formatter: p => {
+            const pct = p.percent?.toFixed(1) || 0;
+            // p.data.name é a sigla, p.data.unidadeCompleta é o nome completo
+            return `<b>${escapeHtml(p.data.unidadeCompleta || p.name)}</b><br/>Sigla: ${escapeHtml(p.data.name)}<br/>Qtd: ${p.value} (${pct}%)`;
+          }
+        },
+        legend: { show: false },
+        series: [
+          {
+            name: 'Unidade',
+            type: 'pie',
+            radius: ['30%', '55%'], // Donut ligeiramente menor para mais espaço
+            center: ['50%', '50%'], // Centralizado
+            label: {
+              show: true,
+              position: 'outer', // Garante que os labels fiquem fora
+              alignTo: 'labelLine', // Alinha o texto do label com a linha
+              edgeDistance: '5%', // Distância da borda do gráfico
+              color: '#e5e7eb',
+              formatter: '{b}', // Echarts usa 'name' para {b}
+              overflow: 'break' // Tenta quebrar a linha se o texto for longo
+            },
+            labelLine: {
+              show: true,
+              length: 15, // Aumenta o comprimento da primeira parte da linha
+              length2: 25, // Aumenta o comprimento da segunda parte da linha
+              smooth: true // Linhas mais suaves
+            },
+            data: pieData // Usa os dados Top N
+          }
+        ]
+      };
+
+      pie.setOption(option, true);
+      pie.off('click');
+      pie.on('click', (p) => {
+        // Ao clicar, filtra pela sigla original para o combo de filtro de Sigla
+        const siglaToFilter = p.data?.siglaOriginal || p.name; // Use siglaOriginal aqui para o filtro
+        if (!siglaToFilter) return;
+        toggleSelection(state.selected.sigla, siglaToFilter);
+        applyFiltersAndRender();
+      });
+      setTimeout(() => pie.resize(), 0);
+    }
+
+    // Função para re-renderizar o gráfico de pizza quando o Top N muda (sem chamar o backend)
+    // Agora, simplesmente chamamos applyFiltersAndRender para que o backend envie os dados corretos.
+    function renderPieFromState() {
+      applyFiltersAndRender();
+    }
+
+    // Função para derivar a sigla (copiada do backend para uso no frontend, para a UI)
+    // ESTA FUNÇÃO PRECISA SER IDÊNTICA À DO BACKEND PARA CONSISTÊNCIA
+    function deriveSigla(unidade) {
+      const u = String(unidade || '').trim();
+      if (!u) return '';
+
+      const hyphenIndex = u.indexOf('-');
+      if (hyphenIndex !== -1) {
+        return u.substring(hyphenIndex + 1).trim();
+      }
+
+      const parts = u.split(/[\s/|-]+/).filter(Boolean);
+      const initials = parts
+        .filter(w => w.length >= 3)
+        .slice(0, 4)
+        .map(w => w[0].toUpperCase())
+        .join('');
+      if (initials) return initials;
+      return u.substring(0, 3).toUpperCase();
+    }
+
+
+    // Barras — documentos por Usuário
+    function renderBar(fullAggregatedData) { // Agora recebe DADOS COMPLETOS e já ordenados do backend
+      if (!bar) bar = echarts.init(dom.barChart);
+      
+      let barData = [...fullAggregatedData]; // Cria uma cópia para aplicar o Top N localmente
+
+      // Aplica a lógica Top N localmente no frontend
+      const n = state.topNBar === 'all' ? barData.length : Number(state.topNBar);
+      barData = barData.slice(0, n);
+
+      const users = barData.map(d => d.name);
+      const counts = barData.map(d => d.value);
+
+      const w = dom.barChart.clientWidth || 800;
+      const leftSpace = Math.max(120, Math.round(w * 0.25) - 16);
+      const axisLabelWidth = Math.max(100, leftSpace - 24);
+
+      const option = {
+        backgroundColor: 'transparent',
+        grid: { left: leftSpace, right: 16, top: 24, bottom: 18 },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          formatter: (params) => {
+            const p = params[0];
+            return `<b>${escapeHtml(p.name)}</b><br/>Documentos: ${p.value}`;
+          }
+        },
+        xAxis: {
+          type: 'value',
+          splitLine: { lineStyle: { color: '#1f2937' } },
+          axisLine: { lineStyle: { color: '#374151' } },
+          axisLabel: { color: '#cbd5e1' }
+        },
+        yAxis: {
+          type: 'category',
+          data: users,
+          axisTick: { show: false },
+          axisLine: { lineStyle: { color: '#374151' } },
+          axisLabel: {
+            color: '#cbd5e1',
+            width: axisLabelWidth,
+            overflow: 'truncate'
+          }
+        },
+        series: [
+          {
+            type: 'bar',
+            data: counts,
+            barWidth: Math.min(36, Math.max(18, 360 / Math.max(6, counts.length))),
+            itemStyle: {
+              color: '#60a5fa',
+              borderRadius: [4, 6, 6, 4]
+            }
+          }
+        ]
+      };
+
+      bar.setOption(option, true);
+      bar.off('click');
+      bar.on('click', (p) => {
+        const nome = p.name;
+        if (!nome) return;
+        toggleSelection(state.selected.usuario, nome);
+        applyFiltersAndRender();
+      });
+      setTimeout(() => bar.resize(), 0);
+    }
+
+    // Função para re-renderizar o gráfico de barras quando o Top N muda (sem chamar o backend)
+    // Agora, simplesmente chamamos applyFiltersAndRender para que o backend envie os dados corretos.
+    function renderBarFromState() {
+      applyFiltersAndRender();
+    }
+
+    // Renderiza a tabela de dados
+    function renderTable(dataRows) {
+      const rows = dataRows.slice(0, 300); // Exibe até 300 para manter a leveza
+      const frag = document.createDocumentFragment();
+      dom.tbody.innerHTML = '';
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(r.Processo)}</td>
+          <td>${escapeHtml(r.Documento)}</td>
+          <td>${escapeHtml(r.Descricao)}</td>
+          <td>${escapeHtml(r.Unidade)}</td>
+          <td>${escapeHtml(r.Sigla)}</td>
+          <td>${escapeHtml(r.Usuario)}</td>
+          <td class="cpf-column">${escapeHtml(r.CPF)}</td>
+          <td class="muted">${formatDateForDisplay(r.Data)}</td>
+        `;
+        frag.appendChild(tr);
+      }
+      if (rows.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 8; // Ajustado para incluir a coluna CPF
+        td.className = 'muted';
+        td.textContent = 'Nenhum registro encontrado com os filtros atuais.';
+        tr.appendChild(td);
+        frag.appendChild(tr);
+      }
+      dom.tbody.appendChild(frag);
+    }
+    
+    // Utilitário para formatar datas para exibição em pt-BR (corrigido para o problema do dia)
+    function formatDateForDisplay(dateString) {
+        if (!dateString) return '';
+        try {
+            // dateString chega como "YYYY-MM-DD" do backend.
+            // Criar um Date object com 'T00:00:00Z' garante que ele seja interpretado como UTC
+            // e toLocaleDateString com timeZone: 'UTC' exibirá o dia correto do calendário.
+            const date = new Date(dateString + 'T00:00:00Z');
+            
+            if (isNaN(date.getTime())) return dateString; // Se inválida, retorna a string original
+
+            return date.toLocaleDateString('pt-BR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                timeZone: 'UTC' // Garante que o dia exibido é o dia do UTC YYYY-MM-DD
+            });
+        } catch (e) {
+            console.error('Erro ao formatar data:', e);
+            return dateString;
+        }
+    }
+
+
+    // Utilitários genéricos
+    function toggleSelection(set, value) {
+      if (set.has(value)) set.delete(value); else set.add(value);
+    }
+
+    function updateFabAndCounter() {
+      const count = (state.selected.unidade.size ? 1 : 0)
+        + (state.selected.sigla.size ? 1 : 0)
+        + (state.selected.usuario.size ? 1 : 0)
+        + (state.selectedFlatpickrDate ? 1 : 0)
+        + (state.search ? 1 : 0);
+
+      dom.activeFilters.textContent = `${count} filtro${count === 1 ? '' : 's'} ativo${count === 1 ? '' : 's'}`;
+      dom.fabClear.classList.toggle('show', count > 0);
+    }
+
+    function clearAll() {
+      state.selected.unidade.clear();
+      state.selected.sigla.clear();
+      state.selected.usuario.clear();
+      state.selectedFlatpickrDate = null;
+      datePickerInstance.clear();
+      state.search = '';
+      dom.inputSearch.value = '';
+
+      // Limpa chips e re-renderiza os combos para refletir o estado limpo
+      makeCombo(dom.combos.unidade, state.sets.unidade, state.selected.unidade, () => updateFabAndCounter());
+      makeCombo(dom.combos.sigla, state.sets.sigla, state.selected.sigla, () => updateFabAndCounter());
+      makeCombo(dom.combos.usuario, state.sets.usuario, state.selected.usuario, () => updateFabAndCounter());
+      
+      applyFiltersAndRender();
+    }
+
+    function resizeCharts() {
+      if (pie) pie.resize();
+      if (bar) bar.resize();
+    }
+
+    function debounce(fn, wait) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), wait);
+      };
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll('\'', '&#039;');
+    }
+  </script>
 </body>
 </html>
