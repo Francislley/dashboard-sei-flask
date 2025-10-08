@@ -724,7 +724,8 @@
     // Função para lidar com a carga inicial de TODOS os dados e opções de filtro do backend
     function onInitialDataLoaded(res) {
       if (!res || res.error) { // Verifica se há um erro retornado pelo Flask
-        alert('Erro ao carregar dados iniciais: ' + (res?.error || 'Resposta vazia.'));
+        console.error('Erro detalhado:', res?.error); // Loga o erro detalhado do backend
+        alert('Erro ao carregar dados iniciais: ' + (res?.error || 'Resposta vazia. Verifique o console para mais detalhes.'));
         return;
       }
       
@@ -892,7 +893,7 @@
           trigger: 'item',
           formatter: p => {
             const pct = p.percent?.toFixed(1) || 0;
-            // p.data.name é a sigla, p.data.unidadeCompleta é o nome completo
+            // p.data.name é a sigla (ex: ASTEC), p.data.unidadeCompleta é o nome completo (ex: SMCL-ASTEC)
             return `<b>${escapeHtml(p.data.unidadeCompleta || p.name)}</b><br/>Sigla: ${escapeHtml(p.data.name)}<br/>Qtd: ${p.value} (${pct}%)`;
           }
         },
@@ -909,13 +910,13 @@
               alignTo: 'labelLine', // Alinha o texto do label com a linha
               edgeDistance: '5%', // Distância da borda do gráfico
               color: '#e5e7eb',
-              formatter: '{b}', // Echarts usa 'name' para {b}
+              formatter: '{b}', // Echarts usa 'name' para {b}, que é a sigla (ex: ASTEC)
               // overflow: 'break' // REMOVIDO para evitar quebra de linha
             },
             labelLine: {
               show: true,
-              length: 15,
-              length2: 25,
+              length: 8, // Linha mais curta
+              length2: 15, // Segunda parte da linha mais curta
               smooth: true,
               minTurnAngle: 30 // Evita curvas muito fechadas para os labels
             },
@@ -956,8 +957,9 @@
       const counts = barData.map(d => d.value);
 
       const w = dom.barChart.clientWidth || 800;
-      const leftSpace = Math.max(120, Math.round(w * 0.25) - 16);
-      const axisLabelWidth = Math.max(100, leftSpace - 24);
+      // Ajuste para dar mais espaço aos rótulos do eixo Y
+      const leftSpace = Math.max(150, Math.round(w * 0.25) - 16); // Aumentado o mínimo para 150px
+      const axisLabelWidth = Math.max(120, leftSpace - 24); // Aumentado o mínimo para 120px
 
       const option = {
         backgroundColor: 'transparent',
@@ -983,8 +985,10 @@
           axisLine: { lineStyle: { color: '#374151' } },
           axisLabel: {
             color: '#cbd5e1',
-            width: axisLabelWidth,
-            // overflow: 'truncate' // REMOVIDO para mostrar nome completo
+            align: 'left', // Alinha o texto à esquerda
+            width: axisLabelWidth, // Mantém a largura calculada
+            overflow: 'truncate', // Trunca se for muito longo
+            ellipsis: '...' // Adiciona reticências ao truncar
           }
         },
         series: [
