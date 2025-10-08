@@ -13,7 +13,7 @@ SPREADSHEET_ID = '171LrxIb7IhCnYTP3rV7WaUGp0_mBaO2pX9cS0va6JJs'
 # SUBSTITUA PELO NOME DA SUA ABA
 WORKSHEET_NAME = 'SEI'
 # Caminho para o arquivo de credenciais
-CREDENTIALS_FILE = '/home/francislley/dashboard-sei-flask/dashboard-sei-flask/dashboard-sei-8f0c2c70b56c.json' # Caminho absoluto
+CREDENTIALS_FILE = '/home/francislley/dashboard-sei-flask/dashboard-sei-flask/dashboard-sei-8f0c2c70b56c.json' # Caminho ABSOLUTO
 
 # --- Função para Carregar Dados Brutos da Planilha ---
 def load_raw_data_from_sheet():
@@ -24,42 +24,59 @@ def load_raw_data_from_sheet():
         data = worksheet.get_all_records()
         df = pd.DataFrame(data)
 
-        # Limpeza básica: substituir vazios por NA e remover linhas totalmente vazias
+        # Limpeza básica: substituir vazios por NA
         df.replace('', pd.NA, inplace=True)
-        # df.dropna(how='all', inplace=True) # Opcional: remover linhas onde TODAS as colunas são NA
+
+        # Renomear colunas para padronizar (se necessário)
+        # Exemplo: se sua planilha tem 'Nome do Usuário', renomeie para 'Usuario'
+        # df.rename(columns={'Nome do Usuário': 'Usuario'}, inplace=True)
+        # df.rename(columns={'Descricao Completa': 'Descricao'}, inplace=True)
+
+        # Tentar padronizar nomes de colunas comuns (com e sem acento)
+        if 'Usuário' in df.columns and 'Usuario' not in df.columns:
+            df.rename(columns={'Usuário': 'Usuario'}, inplace=True)
+        if 'Descrição' in df.columns and 'Descricao' not in df.columns:
+            df.rename(columns={'Descrição': 'Descricao'}, inplace=True)
 
         # Converter coluna 'Data' para datetime, se existir
         if 'Data' in df.columns:
-            # Tenta converter para datetime, erros resultam em NaT (Not a Time)
-            # Usar infer_datetime_format=True pode ajudar a detectar formatos comuns como DD/MM/AAAA ou YYYY-MM-DD
-            df['Data'] = pd.to_datetime(df['Data'], errors='coerce', dayfirst=True, infer_datetime_format=True)
+            # dayfirst=True é crucial se suas datas estão em DD/MM/AAAA
+            df['Data'] = pd.to_datetime(df['Data'], errors='coerce', dayfirst=True)
             # Formata de volta para string YYYY-MM-DD para consistência com JS
             df['Data'] = df['Data'].dt.strftime('%Y-%m-%d').replace({pd.NA: None})
 
         return df
     except Exception as e:
         print(f"Erro ao carregar dados da planilha: {e}")
-        # Para depuração, você pode querer levantar a exceção ou retornar um DataFrame vazio
-        # raise e # Descomente para ver o traceback completo no log
+        # Para depuração, você pode querer levantar o erro ou retornar um DataFrame vazio
+        # raise e # Descomente para ver o erro completo no log do PythonAnywhere
         return pd.DataFrame() # Retorna DataFrame vazio em caso de erro
 
-# --- Função para Derivar Sigla (deve ser consistente com o frontend) ---
+# --- Função para Derivar Sigla (DEVE SER IDÊNTICA À DO FRONTEND) ---
 def derive_sigla(unidade):
     u = str(unidade or '').strip()
     if not u:
         return ''
 
-    # Se houver um hífen, retorna a parte após o primeiro hífen
+    # Prioridade 1: Se tem hífen, pega a parte depois do hífen (ex: SMCL-ASTEC -> ASTEC)
     hyphen_index = u.find('-')
     if hyphen_index != -1:
         return u[hyphen_index + 1:].strip()
+
+    # Prioridade 2: Se não tem hífen, mas é uma sigla curta (2 a 5 caracteres, todas maiúsculas)
+    # Assumimos que siglas como "ASTEC", "DPE" já são a sigla desejada.
+    # Ajuste o limite de 5 se suas siglas forem mais longas.
+    if len(u) >= 2 and len(u) <= 5 and u.isupper():
+        return u
     
-    # Se não houver hífen, tenta derivar as iniciais como antes (fallback)
+    # Prioridade 3: Fallback para iniciais de palavras (para nomes mais longos sem hífen)
     parts = [w for w in u.split(' ') if w]
     initials = ''.join([w[0].upper() for w in parts if len(w) >= 3 and w[0].isalpha()])
     if initials:
         return initials
-    return u[:3].upper() # Fallback para as 3 primeiras letras se não houver palavras adequadas
+    
+    # Fallback final: as 3 primeiras letras em maiúsculas
+    return u[:3].upper()
 
 # --- Função para Processar e Filtrar Dados ---
 def process_dashboard_data(df_raw, filters=None):
@@ -80,12 +97,13 @@ def process_dashboard_data(df_raw, filters=None):
         selected_values = filters.get(field, [])
         if selected_values:
             # As colunas na planilha são 'Unidade', 'Sigla', 'Usuario' (com maiúscula)
+            # Verifica se a coluna existe antes de filtrar
             col_name = field.capitalize()
             if col_name in df.columns:
                 df = df[df[col_name].isin(selected_values)]
             else:
-                # Se a coluna não existe, o filtro não pode ser aplicado, mas não causa erro
-                print(f"Aviso: Coluna '{col_name}' não encontrada no DataFrame para filtro. Ignorando filtro.")
+                print(f"Aviso: Coluna '{col_name}' não encontrada no DataFrame para filtro.")
+
 
     # 3. Aplicar Filtro de Data (selectedDateString)
     selected_date_str = filters.get('selectedDateString')
@@ -95,7 +113,6 @@ def process_dashboard_data(df_raw, filters=None):
         df = df[df_date_str == selected_date_str]
 
     # --- Calcular KPIs ---
-    # Adicionando verificação de existência de coluna para KPIs
     total_processos = df['Processo'].nunique() if 'Processo' in df.columns else 0
     total_documentos = len(df) # Contagem de linhas após filtros
     total_unidades = df['Unidade'].nunique() if 'Unidade' in df.columns else 0
@@ -115,13 +132,14 @@ def process_dashboard_data(df_raw, filters=None):
             sigla_original = None
 
             # Tenta obter a Sigla diretamente do DataFrame principal 'df'
-            # Se a coluna 'Sigla' existe e há uma sigla associada a esta unidade
             if 'Sigla' in df.columns:
                 # Pega a primeira sigla associada a esta unidade no DataFrame filtrado
-                sigla_series = df[df['Unidade'] == unidade_completa]['Sigla'].dropna()
-                if not sigla_series.empty:
-                    sigla_original = sigla_series.iloc[0] # Pega a primeira sigla encontrada
-
+                # Isso assume que cada unidade tem uma sigla consistente.
+                # Se uma unidade pode ter múltiplas siglas, a lógica precisaria ser mais complexa.
+                sigla_from_df = df[df['Unidade'] == unidade_completa]['Sigla'].dropna().iloc[0] if not df[df['Unidade'] == unidade_completa]['Sigla'].dropna().empty else None
+                if sigla_from_df:
+                    sigla_original = sigla_from_df
+            
             # Se não encontrou uma sigla original ou a coluna 'Sigla' não existe, deriva
             if not sigla_original:
                 sigla_original = derive_sigla(unidade_completa)
@@ -138,7 +156,7 @@ def process_dashboard_data(df_raw, filters=None):
 
     # --- Dados para Gráfico de Barras (Documentos por Usuário) ---
     bar_chart_data = []
-    if 'Usuario' in df.columns: # Verificação de existência da coluna
+    if 'Usuario' in df.columns:
         usuario_counts = df['Usuario'].value_counts().reset_index()
         usuario_counts.columns = ['Usuario', 'Count']
         bar_chart_data = [
@@ -150,9 +168,9 @@ def process_dashboard_data(df_raw, filters=None):
 
     # --- Dados para Tabela ---
     # Seleciona as colunas na ordem desejada e converte para lista de dicionários
-    table_columns_order = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'Data']
-    # Filtra apenas as colunas que realmente existem no DataFrame
-    existing_table_columns = [col for col in table_columns_order if col in df.columns]
+    # Garante que as colunas existam antes de tentar selecioná-las
+    table_columns = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'Data']
+    existing_table_columns = [col for col in table_columns if col in df.columns]
     table_data = df[existing_table_columns].to_dict(orient='records')
 
     return {

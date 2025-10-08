@@ -612,14 +612,13 @@
   <script>
     // Estado Global
     const state = {
-      // 'raw' não é mais necessário no frontend, pois o backend sempre recarrega/processa
-      filtered: [], // Dados atualmente exibidos na tabela, após aplicação dos filtros
-      sets: { unidade: [], sigla: [], usuario: [] }, // Opções de filtro (todas as únicas)
-      selected: { unidade: new Set(), sigla: new Set(), usuario: new Set() }, // Opções selecionadas nos filtros
-      selectedFlatpickrDate: null, // Data selecionada no Flatpickr
-      search: '', // Termo de busca rápida
-      topNPie: '5', // Opção Top N para o gráfico de pizza
-      topNBar: '5' // Opção Top N para o gráfico de barras
+      filtered: [],
+      sets: { unidade: [], sigla: [], usuario: [] },
+      selected: { unidade: new Set(), sigla: new Set(), usuario: new Set() },
+      selectedFlatpickrDate: null,
+      search: '',
+      topNPie: '5',
+      topNBar: '5'
     };
 
     // Referências DOM
@@ -651,6 +650,37 @@
     let pie, bar; // Instâncias dos gráficos ECharts
     let datePickerInstance; // Instância do Flatpickr
 
+    // Função para Derivar Sigla (DEVE SER IDÊNTICA À DO BACKEND)
+    function deriveSigla(unidade) {
+      const u = String(unidade || '').trim();
+      if (!u) return '';
+
+      // Prioridade 1: Se tem hífen, pega a parte depois do hífen (ex: SMCL-ASTEC -> ASTEC)
+      const hyphenIndex = u.indexOf('-');
+      if (hyphenIndex !== -1) {
+        return u.substring(hyphenIndex + 1).trim();
+      }
+
+      // Prioridade 2: Se não tem hífen, mas é uma sigla curta (2 a 5 caracteres, todas maiúsculas)
+      // Assumimos que siglas como "ASTEC", "DPE" já são a sigla desejada.
+      // Ajuste o limite de 5 se suas siglas forem mais longas.
+      if (u.length >= 2 && u.length <= 5 && u === u.toUpperCase()) {
+        return u;
+      }
+      
+      // Prioridade 3: Fallback para iniciais de palavras (para nomes mais longos sem hífen)
+      const parts = u.split(/[\s/|-]+/).filter(Boolean);
+      const initials = parts
+        .filter(w => w.length >= 3)
+        .slice(0, 4)
+        .map(w => w[0].toUpperCase())
+        .join('');
+      if (initials) return initials;
+      
+      // Fallback final: as 3 primeiras letras em maiúsculas
+      return u.substring(0, 3).toUpperCase();
+    }
+
     // Inicialização do dashboard ao carregar a página
     document.addEventListener('DOMContentLoaded', () => {
       // Inicializa o Flatpickr
@@ -679,7 +709,6 @@
       });
 
       // Carrega os dados iniciais e opções de filtro uma única vez do backend
-      // ALTERADO: Usando fetch para a rota Flask /api/initial_data
       fetch('/api/initial_data')
         .then(response => response.json())
         .then(onInitialDataLoaded)
@@ -723,8 +752,8 @@
 
     // Função para lidar com a carga inicial de TODOS os dados e opções de filtro do backend
     function onInitialDataLoaded(res) {
-      if (!res || res.error) { // Verifica se há um erro retornado pelo Flask
-        console.error('Erro detalhado:', res?.error); // Loga o erro detalhado do backend
+      if (!res || res.error) {
+        console.error('Erro detalhado:', res?.error);
         alert('Erro ao carregar dados iniciais: ' + (res?.error || 'Resposta vazia. Verifique o console para mais detalhes.'));
         return;
       }
@@ -745,10 +774,10 @@
 
     // Função para atualizar a UI do dashboard com os dados recebidos do backend
     function updateDashboardUI(dashboardData) {
-      state.filtered = dashboardData.tableData; // Atualiza os dados filtrados no estado do frontend
+      state.filtered = dashboardData.tableData;
       updateKPIs(dashboardData);
-      renderPie(dashboardData.donutChartData); // Passa os dados COMPLETOs do donut chart
-      renderBar(dashboardData.barChartData); // Passa os dados COMPLETOs do bar chart
+      renderPie(dashboardData.donutChartData);
+      renderBar(dashboardData.barChartData);
       renderTable(dashboardData.tableData);
       updateFabAndCounter();
     }
@@ -796,7 +825,7 @@
           chip.className = 'chip';
           chip.innerHTML = `${escapeHtml(val)} <button title="Remover">×</button>`;
           chip.querySelector('button').addEventListener('click', (e) => {
-            e.stopPropagation(); // Evita que o clique no botão de remover feche o menu
+            e.stopPropagation();
             selectedSet.delete(val);
             renderChips();
             renderMenu(input.value);
@@ -814,7 +843,6 @@
             input.focus();
           }
         } else if (e.target !== input && !Array.from(root.querySelectorAll('.chip button')).includes(e.target)) {
-          // Garante que o menu abre ao clicar em qualquer lugar do combo, exceto input e botões de chip
           menu.classList.add('open');
           renderMenu(input.value);
           input.focus();
@@ -838,7 +866,6 @@
 
     // Chamada ao backend para aplicar filtros nos dados brutos e renderizar a UI
     function applyFiltersAndRender() {
-      // Prepara os filtros para enviar ao backend
       let filters = {
         unidade: Array.from(state.selected.unidade),
         sigla: Array.from(state.selected.sigla),
@@ -846,14 +873,12 @@
         quickSearch: state.search
       };
 
-      // Tratamento de data (Flatpickr) - Envia YYYY-MM-DD para o backend
       if (state.selectedFlatpickrDate) {
           filters.selectedDateString = flatpickr.formatDate(state.selectedFlatpickrDate, "Y-m-d");
       } else {
           filters.selectedDateString = null;
       }
 
-      // ALTERADO: Usando fetch para a rota Flask /api/filter_data
       fetch('/api/filter_data', {
         method: 'POST',
         headers: {
@@ -878,12 +903,11 @@
     }
 
     // Pie (Donut) — distribuição por Unidade
-    function renderPie(fullAggregatedData) { // Agora recebe DADOS COMPLETOS e já ordenados do backend
+    function renderPie(fullAggregatedData) {
       if (!pie) pie = echarts.init(dom.pieChart);
       
-      let pieData = [...fullAggregatedData]; // Cria uma cópia para aplicar o Top N localmente
+      let pieData = [...fullAggregatedData];
 
-      // Aplica a lógica Top N localmente no frontend
       const n = state.topNPie === 'all' ? pieData.length : Number(state.topNPie);
       pieData = pieData.slice(0, n);
 
@@ -893,7 +917,6 @@
           trigger: 'item',
           formatter: p => {
             const pct = p.percent?.toFixed(1) || 0;
-            // p.data.name é a sigla (ex: ASTEC), p.data.unidadeCompleta é o nome completo (ex: SMCL-ASTEC)
             return `<b>${escapeHtml(p.data.unidadeCompleta || p.name)}</b><br/>Sigla: ${escapeHtml(p.data.name)}<br/>Qtd: ${p.value} (${pct}%)`;
           }
         },
@@ -902,25 +925,24 @@
           {
             name: 'Unidade',
             type: 'pie',
-            radius: ['30%', '55%'], // Donut ligeiramente menor para mais espaço
-            center: ['50%', '50%'], // Centralizado
+            radius: ['30%', '55%'],
+            center: ['50%', '50%'],
             label: {
               show: true,
-              position: 'outer', // Garante que os labels fiquem fora
-              alignTo: 'labelLine', // Alinha o texto do label com a linha
-              edgeDistance: '5%', // Distância da borda do gráfico
+              position: 'outer',
+              alignTo: 'labelLine',
+              edgeDistance: '5%',
               color: '#e5e7eb',
-              formatter: '{b}', // Echarts usa 'name' para {b}, que é a sigla (ex: ASTEC)
-              // overflow: 'break' // REMOVIDO para evitar quebra de linha
+              formatter: '{b}',
             },
             labelLine: {
               show: true,
-              length: 8, // Linha mais curta
-              length2: 15, // Segunda parte da linha mais curta
+              length: 8,
+              length2: 15,
               smooth: true,
-              minTurnAngle: 30 // Evita curvas muito fechadas para os labels
+              minTurnAngle: 30
             },
-            data: pieData // Usa os dados Top N
+            data: pieData
           }
         ]
       };
@@ -928,8 +950,7 @@
       pie.setOption(option, true);
       pie.off('click');
       pie.on('click', (p) => {
-        // Ao clicar, filtra pela sigla original para o combo de filtro de Sigla
-        const siglaToFilter = p.data?.siglaOriginal || p.name; // Use siglaOriginal aqui para o filtro
+        const siglaToFilter = p.data?.siglaOriginal || p.name;
         if (!siglaToFilter) return;
         toggleSelection(state.selected.sigla, siglaToFilter);
         applyFiltersAndRender();
@@ -937,19 +958,12 @@
       setTimeout(() => pie.resize(), 0);
     }
 
-    // Função para re-renderizar o gráfico de pizza quando o Top N muda (sem chamar o backend)
-    // Agora, simplesmente chamamos applyFiltersAndRender para que o backend envie os dados corretos.
-    function renderPieFromState() {
-      applyFiltersAndRender();
-    }
-
     // Barras — documentos por Usuário
-    function renderBar(fullAggregatedData) { // Agora recebe DADOS COMPLETOS e já ordenados do backend
+    function renderBar(fullAggregatedData) {
       if (!bar) bar = echarts.init(dom.barChart);
       
-      let barData = [...fullAggregatedData]; // Cria uma cópia para aplicar o Top N localmente
+      let barData = [...fullAggregatedData];
 
-      // Aplica a lógica Top N localmente no frontend
       const n = state.topNBar === 'all' ? barData.length : Number(state.topNBar);
       barData = barData.slice(0, n);
 
@@ -957,9 +971,9 @@
       const counts = barData.map(d => d.value);
 
       const w = dom.barChart.clientWidth || 800;
-      // Ajuste para dar mais espaço aos rótulos do eixo Y
-      const leftSpace = Math.max(150, Math.round(w * 0.25) - 16); // Aumentado o mínimo para 150px
-      const axisLabelWidth = Math.max(120, leftSpace - 24); // Aumentado o mínimo para 120px
+      // Aumentado o espaço para os rótulos do eixo Y
+      const leftSpace = Math.max(200, Math.round(w * 0.30) - 16); // Mínimo de 200px, ou 30% da largura
+      const axisLabelWidth = Math.max(180, leftSpace - 24); // Mínimo de 180px
 
       const option = {
         backgroundColor: 'transparent',
@@ -985,10 +999,11 @@
           axisLine: { lineStyle: { color: '#374151' } },
           axisLabel: {
             color: '#cbd5e1',
-            align: 'left', // Alinha o texto à esquerda
-            width: axisLabelWidth, // Mantém a largura calculada
-            overflow: 'truncate', // Trunca se for muito longo
-            ellipsis: '...' // Adiciona reticências ao truncar
+            align: 'left',
+            width: axisLabelWidth,
+            overflow: 'truncate',
+            ellipsis: '...',
+            interval: 0 // Garante que todos os rótulos sejam exibidos, se houver espaço
           }
         },
         series: [
@@ -1015,36 +1030,14 @@
       setTimeout(() => bar.resize(), 0);
     }
 
-    // Função para re-renderizar o gráfico de barras quando o Top N muda (sem chamar o backend)
-    // Agora, simplesmente chamamos applyFiltersAndRender para que o backend envie os dados corretos.
-    function renderBarFromState() {
-      applyFiltersAndRender();
-    }
-
     // Renderiza a tabela de dados
     function renderTable(dataRows) {
-      const rows = dataRows.slice(0, 300); // Exibe até 300 para manter a leveza
+      const rows = dataRows.slice(0, 300);
       const frag = document.createDocumentFragment();
       dom.tbody.innerHTML = '';
-      // Cabeçalhos da tabela (assumindo que dataRows[0] tem as chaves)
-      if (rows.length > 0) {
-          const headerRow = document.createElement('tr');
-          for (const key in rows[0]) {
-              if (key === 'CPF') { // Oculta a coluna CPF no cabeçalho
-                  headerRow.innerHTML += `<th class="cpf-column">${escapeHtml(key)}</th>`;
-              } else {
-                  headerRow.innerHTML += `<th>${escapeHtml(key)}</th>`;
-              }
-          }
-          // dom.tbody.parentNode.querySelector('thead tr').innerHTML = headerRow.innerHTML; // Isso sobrescreveria o thead estático
-          // Melhor manter o thead estático e garantir que as colunas do tbody correspondam
-      }
-
 
       for (const r of rows) {
         const tr = document.createElement('tr');
-        // A ordem das células deve corresponder à ordem dos cabeçalhos estáticos no HTML
-        // e também à ordem das colunas retornadas pelo backend (existing_table_columns)
         tr.innerHTML = `
           <td>${escapeHtml(r.Processo || '')}</td>
           <td>${escapeHtml(r.Documento || '')}</td>
@@ -1060,7 +1053,7 @@
       if (rows.length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 8; // Ajustado para incluir a coluna CPF
+        td.colSpan = 8;
         td.className = 'muted';
         td.textContent = 'Nenhum registro encontrado com os filtros atuais.';
         tr.appendChild(td);
@@ -1073,25 +1066,21 @@
     function formatDateForDisplay(dateString) {
         if (!dateString) return '';
         try {
-            // dateString chega como "YYYY-MM-DD" do backend.
-            // Criar um Date object com 'T00:00:00Z' garante que ele seja interpretado como UTC
-            // e toLocaleDateString com timeZone: 'UTC' exibirá o dia correto do calendário.
             const date = new Date(dateString + 'T00:00:00Z');
             
-            if (isNaN(date.getTime())) return dateString; // Se inválida, retorna a string original
+            if (isNaN(date.getTime())) return dateString;
 
             return date.toLocaleDateString('pt-BR', {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
-                timeZone: 'UTC' // Garante que o dia exibido é o dia do UTC YYYY-MM-DD
+                timeZone: 'UTC'
             });
         } catch (e) {
             console.error('Erro ao formatar data:', e);
             return dateString;
         }
     }
-
 
     // Utilitários genéricos
     function toggleSelection(set, value) {
@@ -1118,7 +1107,6 @@
       state.search = '';
       dom.inputSearch.value = '';
 
-      // Limpa chips e re-renderiza os combos para refletir o estado limpo
       makeCombo(dom.combos.unidade, state.sets.unidade, state.selected.unidade, () => updateFabAndCounter());
       makeCombo(dom.combos.sigla, state.sets.sigla, state.selected.sigla, () => updateFabAndCounter());
       makeCombo(dom.combos.usuario, state.sets.usuario, state.selected.usuario, () => updateFabAndCounter());
@@ -1145,7 +1133,7 @@
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
-        .replaceAll('\'', '&#039;');
+        .replaceAll('\\'', '&#039;');
     }
   </script>
 </body>
