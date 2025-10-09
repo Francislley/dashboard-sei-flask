@@ -27,11 +27,6 @@ def load_raw_data_from_sheet():
         # Limpeza básica: substituir vazios por NA
         df.replace('', pd.NA, inplace=True)
 
-        # Renomear colunas para padronizar (se necessário)
-        # Exemplo: se sua planilha tem 'Nome do Usuário', renomeie para 'Usuario'
-        # df.rename(columns={'Nome do Usuário': 'Usuario'}, inplace=True)
-        # df.rename(columns={'Descricao Completa': 'Descricao'}, inplace=True)
-
         # Tentar padronizar nomes de colunas comuns (com e sem acento)
         if 'Usuário' in df.columns and 'Usuario' not in df.columns:
             df.rename(columns={'Usuário': 'Usuario'}, inplace=True)
@@ -132,13 +127,14 @@ def process_dashboard_data(df_raw, filters=None):
             sigla_original = None
 
             # Tenta obter a Sigla diretamente do DataFrame principal 'df'
+            # Se a coluna 'Sigla' existe e há uma sigla associada a esta unidade
             if 'Sigla' in df.columns:
                 # Pega a primeira sigla associada a esta unidade no DataFrame filtrado
                 # Isso assume que cada unidade tem uma sigla consistente.
                 # Se uma unidade pode ter múltiplas siglas, a lógica precisaria ser mais complexa.
-                sigla_from_df = df[df['Unidade'] == unidade_completa]['Sigla'].dropna().iloc[0] if not df[df['Unidade'] == unidade_completa]['Sigla'].dropna().empty else None
-                if sigla_from_df:
-                    sigla_original = sigla_from_df
+                sigla_candidates = df[df['Unidade'] == unidade_completa]['Sigla'].dropna()
+                if not sigla_candidates.empty:
+                    sigla_original = sigla_candidates.iloc[0]
             
             # Se não encontrou uma sigla original ou a coluna 'Sigla' não existe, deriva
             if not sigla_original:
