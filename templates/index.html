@@ -959,15 +959,15 @@
 
       const option = {
         backgroundColor: 'transparent',
-        // --- INÍCIO DAS ALTERAÇÕES ---
+        // --- INÍCIO DAS ALTERAÇÕES NO 'grid' ---
         grid: { 
-          left: '25%', // 1. Define a margem esquerda do grid do gráfico
-          right: '3%', // 2. Define a margem direita do grid do gráfico
+          left: '3%', // 1. Margem esquerda do grid: 3% da largura total do card do gráfico
+          right: '2%', // 2. Margem direita do grid: 2% da largura total do card do gráfico
           top: '5%',
           bottom: '3%',
-          containLabel: true // 3. Garante que os rótulos do eixo Y sejam totalmente contidos dentro da área do grid
+          containLabel: true // 3. Garante que os rótulos do eixo Y sejam totalmente visíveis
         },
-        // --- FIM DAS ALTERAÇÕES EM 'grid' ---
+        // --- FIM DAS ALTERAÇÕES NO 'grid' ---
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
@@ -987,17 +987,18 @@
           data: users,
           axisTick: { show: false },
           axisLine: { lineStyle: { color: '#374151' } },
-          // --- INÍCIO DAS ALTERAÇÕES EM 'yAxis.axisLabel' ---
+          // --- INÍCIO DAS ALTERAÇÕES NO 'yAxis.axisLabel' ---
           axisLabel: {
             color: '#cbd5e1',
             align: 'left', // 4. Alinha o texto do rótulo à esquerda
-            overflow: 'truncate', // 5. Define que o texto deve ser truncado se exceder o espaço
-            ellipsis: '...', // 6. Caractere a ser usado para o truncamento
+            // REMOVIDO: 'overflow: truncate' e 'ellipsis: ...'
+            // Ao remover essas propriedades, o ECharts tentará exibir o nome completo.
+            // Se o nome for muito longo e o espaço for insuficiente (mesmo com containLabel: true),
+            // o ECharts pode automaticamente girar o texto ou ajustar a fonte para tentar encaixar.
             interval: 0, // Garante que todos os rótulos sejam exibidos
-            margin: 5 // 7. Adiciona uma pequena margem entre o rótulo e a linha do eixo
-            // REMOVIDO: a propriedade 'width' aqui, pois 'grid.left' já define o espaço disponível
+            margin: 5 // 5. Adiciona uma pequena margem entre o rótulo e a linha do eixo
           }
-          // --- FIM DAS ALTERAÇÕES EM 'yAxis.axisLabel' ---
+          // --- FIM DAS ALTERAÇÕES NO 'yAxis.axisLabel' ---
         },
         series: [
           {
