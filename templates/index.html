@@ -959,13 +959,15 @@
 
       const option = {
         backgroundColor: 'transparent',
+        // --- INÍCIO DAS ALTERAÇÕES ---
         grid: { 
-          left: '25%', // 25% da largura do contêiner do gráfico para os rótulos do eixo Y
-          right: '3%', // 3% de margem à direita para as barras (72% para as barras, totalizando 75% com o right)
+          left: '25%', // 1. Define a margem esquerda do grid do gráfico
+          right: '3%', // 2. Define a margem direita do grid do gráfico
           top: '5%',
           bottom: '3%',
-          containLabel: true // Garante que os rótulos do eixo Y não sejam cortados pelo grid
+          containLabel: true // 3. Garante que os rótulos do eixo Y sejam totalmente contidos dentro da área do grid
         },
+        // --- FIM DAS ALTERAÇÕES EM 'grid' ---
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
@@ -985,15 +987,17 @@
           data: users,
           axisTick: { show: false },
           axisLine: { lineStyle: { color: '#374151' } },
+          // --- INÍCIO DAS ALTERAÇÕES EM 'yAxis.axisLabel' ---
           axisLabel: {
             color: '#cbd5e1',
-            align: 'left', // Alinha o texto do rótulo à esquerda
-            overflow: 'truncate', // Trunca o texto se for muito longo
-            ellipsis: '...', // Adiciona reticências ao truncar
+            align: 'left', // 4. Alinha o texto do rótulo à esquerda
+            overflow: 'truncate', // 5. Define que o texto deve ser truncado se exceder o espaço
+            ellipsis: '...', // 6. Caractere a ser usado para o truncamento
             interval: 0, // Garante que todos os rótulos sejam exibidos
-            margin: 5 // Adiciona uma pequena margem entre o rótulo e a linha do eixo
-            // REMOVIDO: width: '100%' - vamos deixar o ECharts inferir a largura máxima com base no 'grid.left' e 'overflow'
+            margin: 5 // 7. Adiciona uma pequena margem entre o rótulo e a linha do eixo
+            // REMOVIDO: a propriedade 'width' aqui, pois 'grid.left' já define o espaço disponível
           }
+          // --- FIM DAS ALTERAÇÕES EM 'yAxis.axisLabel' ---
         },
         series: [
           {
