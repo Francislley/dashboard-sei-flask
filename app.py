@@ -8,7 +8,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 # --- Configurações da Planilha ---
-# SUBSTITUA PELO ID DA SUA PLANILHAN
+# SUBSTITUA PELO ID DA SUA PLANILHA
 SPREADSHEET_ID = '171LrxIb7IhCnYTP3rV7WaUGp0_mBaO2pX9cS0va6JJs'
 # SUBSTITUA PELO NOME DA SUA ABA
 WORKSHEET_NAME = 'SEI'
@@ -46,26 +46,6 @@ def load_raw_data_from_sheet():
         # Para depuração, você pode querer levantar o erro ou retornar um DataFrame vazio
         # raise e # Descomente para ver o erro completo no log do PythonAnywhere
         return pd.DataFrame() # Retorna DataFrame vazio em caso de erro
-
-# --- Função para Derivar Sigla (DEVE SER IDÊNTICA À DO FRONTEND) ---
-def derive_sigla(unidade):
-    u = str(unidade or '').strip()
-    if not u:
-        return ''
-
-    # Prioridade 1: Se tem hífen, pega a parte depois do hífen (ex: SMCL-ASTEC -> ASTEC)
-    hyphen_index = u.find('-')
-    if hyphen_index != -1:
-        return u[hyphen_index + 1:].strip()
-
-    # Prioridade 2: Se não tem hífen, mas é uma sigla curta (2 a 5 caracteres, todas maiúsculas)
-    # Assumimos que siglas como "ASTEC", "DPE" já são a sigla desejada.
-    # Ajuste o limite de 5 se suas siglas forem mais longas.
-    if len(u) >= 2 and len(u) <= 5 and u.isupper():
-        return u
-    
-    # Se não tem hífen e não é uma sigla curta, retorna vazio para não exibir nome completo como sigla
-    return ''
 
 # --- Função para Processar e Filtrar Dados ---
 def process_dashboard_data(df_raw, filters=None):
@@ -109,36 +89,26 @@ def process_dashboard_data(df_raw, filters=None):
 
     # --- Dados para Gráfico de Donut (Distribuição por Unidade/Sigla) ---
     donut_chart_data = []
-    if 'Unidade' in df.columns:
-        # Agrega por Unidade para obter a contagem
-        unidade_counts = df['Unidade'].value_counts().reset_index()
-        unidade_counts.columns = ['Unidade', 'Count']
+    if 'Unidade' in df.columns and 'Sigla' in df.columns: # Garante que ambas as colunas existam
+        # Agrega por Sigla para obter a contagem
+        sigla_counts = df.groupby('Sigla')['Unidade'].count().reset_index()
+        sigla_counts.columns = ['Sigla', 'Count']
 
         # Prepara os dados para o gráfico
-        for index, row in unidade_counts.iterrows():
-            unidade_completa = row['Unidade']
+        for index, row in sigla_counts.iterrows():
+            sigla_exibicao = row['Sigla']
             count = row['Count']
-            sigla_original = None
+            
+            # Pega o nome completo da unidade para o tooltip, associado a esta sigla
+            # Isso pode pegar a primeira unidade encontrada para a sigla, ou você pode ajustar
+            # para pegar todas as unidades ou uma representativa.
+            unidade_completa = df[df['Sigla'] == sigla_exibicao]['Unidade'].iloc[0] if not df[df['Sigla'] == sigla_exibicao]['Unidade'].empty else sigla_exibicao
 
-            # Tenta obter a Sigla diretamente do DataFrame principal 'df'
-            # Se a coluna 'Sigla' existe e há uma sigla associada a esta unidade
-            if 'Sigla' in df.columns:
-                # Pega a primeira sigla associada a esta unidade no DataFrame filtrado
-                # Isso assume que cada unidade tem uma sigla consistente.
-                # Se uma unidade pode ter múltiplas siglas, a lógica precisaria ser mais complexa.
-                sigla_candidates = df[df['Unidade'] == unidade_completa]['Sigla'].dropna()
-                if not sigla_candidates.empty:
-                    sigla_original = sigla_candidates.iloc[0]
-            
-            # Se não encontrou uma sigla original ou a coluna 'Sigla' não existe, deriva
-            if not sigla_original:
-                sigla_original = derive_sigla(unidade_completa)
-            
             donut_chart_data.append({
-                'name': derive_sigla(unidade_completa), # Sigla para o gráfico (derivada para exibição)
+                'name': sigla_exibicao, # Usa a sigla diretamente da coluna
                 'value': count,
-                'unidadeCompleta': unidade_completa,
-                'siglaOriginal': sigla_original # A sigla original ou derivada para o filtro
+                'unidadeCompleta': unidade_completa, # Nome completo para o tooltip
+                'siglaOriginal': sigla_exibicao # A sigla para o filtro (já é a desejada)
             })
         
         # Ordena por valor (Count) decrescente
@@ -186,7 +156,7 @@ def get_initial_data():
     # Obter opções únicas para os filtros (deve ser dos dados BRUTOS)
     filter_options = {
         'unidades': sorted(df_raw['Unidade'].dropna().unique().tolist()) if 'Unidade' in df_raw.columns else [],
-        'siglas': sorted(df_raw['Sigla'].dropna().unique().tolist()) if 'Sigla' in df_raw.columns else [],
+        'siglas': sorted(df_raw['Sigla'].dropna().unique().tolist()) if 'Sigla' in df_raw.columns else [], # Usa a coluna Sigla diretamente
         'usuarios': sorted(df_raw['Usuario'].dropna().unique().tolist()) if 'Usuario' in df_raw.columns else []
     }
 
