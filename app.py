@@ -8,7 +8,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 # --- Configurações da Planilha ---
-# SUBSTITUA PELO ID DA SUA PLANILHA
+# SUBSTITUA PELO ID DA SUA PLANILHAN
 SPREADSHEET_ID = '171LrxIb7IhCnYTP3rV7WaUGp0_mBaO2pX9cS0va6JJs'
 # SUBSTITUA PELO NOME DA SUA ABA
 WORKSHEET_NAME = 'SEI'
@@ -53,13 +53,19 @@ def derive_sigla(unidade):
     if not u:
         return ''
 
-    # Prioridade: Se tem hífen, pega a parte depois do hífen (ex: SMCL-ASTEC -> ASTEC)
+    # Prioridade 1: Se tem hífen, pega a parte depois do hífen (ex: SMCL-ASTEC -> ASTEC)
     hyphen_index = u.find('-')
     if hyphen_index != -1:
         return u[hyphen_index + 1:].strip()
 
-    # Se não tem hífen, retorna a string original (sem derivar iniciais)
-    return u
+    # Prioridade 2: Se não tem hífen, mas é uma sigla curta (2 a 5 caracteres, todas maiúsculas)
+    # Assumimos que siglas como "ASTEC", "DPE" já são a sigla desejada.
+    # Ajuste o limite de 5 se suas siglas forem mais longas.
+    if len(u) >= 2 and len(u) <= 5 and u.isupper():
+        return u
+    
+    # Se não tem hífen e não é uma sigla curta, retorna vazio para não exibir nome completo como sigla
+    return ''
 
 # --- Função para Processar e Filtrar Dados ---
 def process_dashboard_data(df_raw, filters=None):
