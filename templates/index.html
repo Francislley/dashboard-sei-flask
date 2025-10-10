@@ -957,16 +957,11 @@
       const users = barData.map(d => d.name);
       const counts = barData.map(d => d.value);
 
-      // Definimos o espaço para o rótulo do eixo Y como 25% da largura total do gráfico
-      const labelAreaWidth = '25%'; 
-      // O restante (75%) será para as barras, com uma pequena margem à direita
-      const barAreaRightMargin = '3%'; 
-
       const option = {
         backgroundColor: 'transparent',
         grid: { 
-          left: labelAreaWidth, // Ocupa 25% da largura do contêiner do gráfico para os rótulos
-          right: barAreaRightMargin, // 3% de margem à direita
+          left: '25%', // 25% da largura do contêiner do gráfico para os rótulos do eixo Y
+          right: '3%', // 3% de margem à direita para as barras (72% para as barras, totalizando 75% com o right)
           top: '5%',
           bottom: '3%',
           containLabel: true // Garante que os rótulos do eixo Y não sejam cortados pelo grid
@@ -993,11 +988,11 @@
           axisLabel: {
             color: '#cbd5e1',
             align: 'left', // Alinha o texto do rótulo à esquerda
-            width: '100%', // Ocupa 100% da largura disponível para o rótulo (que é o 'left' do grid)
             overflow: 'truncate', // Trunca o texto se for muito longo
             ellipsis: '...', // Adiciona reticências ao truncar
             interval: 0, // Garante que todos os rótulos sejam exibidos
-            padding: [0, 5, 0, 0] // Adiciona um pequeno padding à direita do texto para não colar na barra
+            margin: 5 // Adiciona uma pequena margem entre o rótulo e a linha do eixo
+            // REMOVIDO: width: '100%' - vamos deixar o ECharts inferir a largura máxima com base no 'grid.left' e 'overflow'
           }
         },
         series: [
