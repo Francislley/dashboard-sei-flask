@@ -961,10 +961,10 @@
         backgroundColor: 'transparent',
         // --- INÍCIO DAS ALTERAÇÕES NO 'grid' ---
         grid: { 
-          left: '15%', // 1. Margem esquerda do grid: 15% da largura total do card do gráfico
+          left: '20%', // 1. Margem esquerda do grid: 20% da largura total do card do gráfico
           right: '5%', // 2. Margem direita do grid: 5% da largura total do card do gráfico
-          top: '5%',
-          bottom: '3%',
+          top: '5%',   // Margem superior
+          bottom: '3%',// Margem inferior
           containLabel: true // 3. Garante que os rótulos do eixo Y sejam totalmente visíveis
         },
         // --- FIM DAS ALTERAÇÕES NO 'grid' ---
@@ -993,10 +993,8 @@
             align: 'left', // 4. Alinha o texto do rótulo à esquerda
             overflow: 'truncate', // 5. Define que o texto deve ser truncado se exceder o espaço
             ellipsis: '...', // 6. Caractere a ser usado para o truncamento
-            interval: 0, // Garante que todos os rótulos sejam exibidos
-            margin: 5 // 7. Adiciona uma pequena margem entre o rótulo e a linha do eixo
-            // REMOVIDO: a propriedade 'width' aqui. Deixaremos o ECharts gerenciar a largura máxima
-            // com base no 'grid.left' e 'overflow'.
+            interval: 0, // 7. Garante que todos os rótulos sejam exibidos
+            margin: 5 // 8. Adiciona uma pequena margem entre o rótulo e a linha do eixo
           }
           // --- FIM DAS ALTERAÇÕES NO 'yAxis.axisLabel' ---
         },
@@ -1023,7 +1021,7 @@
       });
       setTimeout(() => bar.resize(), 0);
     }
-    
+
     // Renderiza a tabela de dados
     function renderTable(dataRows) {
       const rows = dataRows.slice(0, 300);
