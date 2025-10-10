@@ -947,68 +947,118 @@
 
     // Barras — documentos por Usuário
     function renderBar(fullAggregatedData) {
+      // 1. Inicializa o gráfico ECharts se ainda não foi inicializado
+      // 'bar' é a instância do gráfico, 'dom.barChart' é o elemento HTML onde ele será renderizado.
       if (!bar) bar = echarts.init(dom.barChart);
       
+      // 2. Prepara os dados para o gráfico
+      // Cria uma cópia dos dados agregados recebidos.
       let barData = [...fullAggregatedData];
 
+      // 3. Aplica o filtro Top N (se configurado)
+      // 'n' define quantos itens (usuários) serão exibidos (Top 5, Top 10, etc., ou 'all' para todos).
       const n = state.topNBar === 'all' ? barData.length : Number(state.topNBar);
+      // Limita os dados ao número 'n' definido.
       barData = barData.slice(0, n);
 
-      const users = barData.map(d => d.name);
-      const counts = barData.map(d => d.value);
+      // 4. Extrai os nomes dos usuários e as contagens de documentos dos dados filtrados
+      const users = barData.map(d => d.name);    // Array com os nomes dos usuários (para o eixo Y)
+      const counts = barData.map(d => d.value);  // Array com as contagens de documentos (para o eixo X)
 
+      // 5. Objeto de configuração principal do ECharts
       const option = {
-        backgroundColor: 'transparent',
-        grid: { left: leftSpace, right: 16, top: 24, bottom: 18 },
+        // 5.1. Configuração do fundo do gráfico
+        backgroundColor: 'transparent', // Define o fundo do gráfico como transparente, permitindo que o CSS do card apareça.
+
+        // 5.2. Configuração da área de posicionamento do gráfico (grid)
+        // O 'grid' define as margens e o espaço onde os eixos e as barras serão desenhados.
+        grid: { 
+          left: '3%', // Define a margem esquerda do grid como 3% da largura total do contêiner do gráfico.
+                       // Isso deixa um pequeno espaço antes do início dos rótulos do eixo Y.
+          right: '2%', // Define a margem direita do grid como 2% da largura total do contêiner do gráfico.
+                        // Isso deixa um pequeno espaço após o final das barras.
+          top: '5%',   // Define a margem superior do grid como 5% da altura total do contêiner do gráfico.
+          bottom: '3%',// Define a margem inferior do grid como 3% da altura total do contêiner do gráfico.
+          containLabel: true // **CRUCIAL:** Garante que os rótulos dos eixos (como os nomes dos usuários no eixo Y)
+                             // sejam totalmente contidos dentro da área do grid, ajustando o grid se necessário.
+                             // Isso evita que os nomes sejam cortados.
+        },
+
+        // 5.3. Configuração da caixa de informações (tooltip) que aparece ao passar o mouse
         tooltip: {
-          trigger: 'axis',
-          axisPointer: { type: 'shadow' },
-          formatter: (params) => {
-            const p = params[0];
+          trigger: 'axis', // O tooltip é acionado quando o mouse passa sobre o eixo (ou seja, sobre uma barra).
+          axisPointer: { type: 'shadow' }, // O ponteiro do eixo será uma sombra (destaca a barra atual).
+          formatter: (params) => { // Função para formatar o conteúdo do tooltip.
+            const p = params[0]; // Pega o primeiro item de dados do tooltip (a barra atual).
+            // Retorna uma string HTML formatada para exibir o nome do usuário em negrito e a contagem de documentos.
             return `<b>${escapeHtml(p.name)}</b><br/>Documentos: ${p.value}`;
           }
         },
+
+        // 5.4. Configuração do Eixo X (horizontal)
         xAxis: {
-          type: 'value',
-          splitLine: { lineStyle: { color: '#1f2937' } },
-          axisLine: { lineStyle: { color: '#374151' } },
-          axisLabel: { color: '#cbd5e1' }
+          type: 'value', // O eixo X representa valores numéricos (a contagem de documentos).
+          splitLine: { lineStyle: { color: '#1f2937' } }, // Estilo das linhas de grade no eixo X.
+          axisLine: { lineStyle: { color: '#374151' } }, // Estilo da linha do próprio eixo X.
+          axisLabel: { color: '#cbd5e1' } // Cor dos rótulos numéricos no eixo X.
         },
+
+        // 5.5. Configuração do Eixo Y (vertical)
         yAxis: {
-          type: 'category',
-          data: users,
-          axisTick: { show: false },
-          axisLine: { lineStyle: { color: '#374151' } },
-          axisLabel: {
-            color: '#cbd5e1',
-            align: 'left',
-            width: axisLabelWidth,
-            overflow: 'truncate',
-            ellipsis: '...',
-            interval: 0 // Garante que todos os rótulos sejam exibidos, se houver espaço
+          type: 'category', // O eixo Y representa categorias (os nomes dos usuários).
+          data: users, // Os dados para as categorias do eixo Y são os nomes dos usuários.
+          axisTick: { show: false }, // Não mostra os pequenos "tiques" na linha do eixo Y.
+          axisLine: { lineStyle: { color: '#374151' } }, // Estilo da linha do próprio eixo Y.
+          axisLabel: { // Configuração dos rótulos (nomes dos usuários) no eixo Y.
+            color: '#cbd5e1', // Cor do texto dos rótulos.
+            align: 'left', // Alinha o texto de cada rótulo à esquerda dentro do seu espaço.
+            // REMOVIDO: 'overflow: truncate' e 'ellipsis: ...'
+            // Essas propriedades foram removidas para permitir que o ECharts tente exibir o nome completo.
+            // Com 'containLabel: true' no 'grid', o ECharts fará o possível para que os nomes caibam.
+            overflow: truncate,
+            interval: 0, // Garante que todos os rótulos (nomes de usuários) sejam exibidos, sem pular nenhum.
+            margin: 5 // Adiciona uma margem de 5 pixels entre o texto do rótulo e a linha do eixo Y.
           }
         },
+
+        // 5.6. Configuração da série de dados (as barras do gráfico)
         series: [
           {
-            type: 'bar',
-            data: counts,
+            type: 'bar', // O tipo de gráfico é de barras.
+            data: counts, // Os dados para as barras são as contagens de documentos.
+            // Define a largura das barras de forma dinâmica:
+            // Garante que a largura da barra esteja entre 18px e 36px,
+            // e também ajusta com base no número de barras para evitar que fiquem muito finas ou grossas.
             barWidth: Math.min(36, Math.max(18, 360 / Math.max(6, counts.length))),
-            itemStyle: {
-              color: '#60a5fa',
-              borderRadius: [4, 6, 6, 4]
+            itemStyle: { // Estilo visual das barras.
+              color: '#60a5fa', // Cor das barras (azul).
+              borderRadius: [4, 6, 6, 4] // Arredondamento dos cantos das barras (superior esquerdo, superior direito, inferior direito, inferior esquerdo).
             }
           }
         ]
       };
 
+      // 6. Aplica a configuração ao gráfico
+      // 'bar.setOption(option, true)' aplica todas as configurações definidas no objeto 'option' à instância do gráfico.
+      // O 'true' como segundo argumento indica que as opções devem ser mescladas, não substituídas completamente.
       bar.setOption(option, true);
+
+      // 7. Remove e adiciona o evento de clique (para evitar múltiplos listeners)
+      // 'bar.off('click')' remove qualquer listener de clique anterior.
       bar.off('click');
+      // 'bar.on('click', (p) => { ... })' adiciona um novo listener de clique.
+      // Quando uma barra é clicada, ele pega o nome do usuário (p.name),
+      // alterna a seleção desse usuário no estado global e re-aplica os filtros.
       bar.on('click', (p) => {
         const nome = p.name;
         if (!nome) return;
         toggleSelection(state.selected.usuario, nome);
         applyFiltersAndRender();
       });
+
+      // 8. Redimensiona o gráfico após um pequeno atraso
+      // 'setTimeout(() => bar.resize(), 0)' garante que o redimensionamento ocorra após o navegador
+      // ter tido tempo de renderizar o DOM e calcular as dimensões corretas do contêiner do gráfico.
       setTimeout(() => bar.resize(), 0);
     }
 
