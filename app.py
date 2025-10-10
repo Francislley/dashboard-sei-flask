@@ -53,25 +53,13 @@ def derive_sigla(unidade):
     if not u:
         return ''
 
-    # Prioridade 1: Se tem hífen, pega a parte depois do hífen (ex: SMCL-ASTEC -> ASTEC)
+    # Prioridade: Se tem hífen, pega a parte depois do hífen (ex: SMCL-ASTEC -> ASTEC)
     hyphen_index = u.find('-')
     if hyphen_index != -1:
         return u[hyphen_index + 1:].strip()
 
-    # Prioridade 2: Se não tem hífen, mas é uma sigla curta (2 a 5 caracteres, todas maiúsculas)
-    # Assumimos que siglas como "ASTEC", "DPE" já são a sigla desejada.
-    # Ajuste o limite de 5 se suas siglas forem mais longas.
-    if len(u) >= 2 and len(u) <= 5 and u.isupper():
-        return u
-    
-    # Prioridade 3: Fallback para iniciais de palavras (para nomes mais longos sem hífen)
-    parts = [w for w in u.split(' ') if w]
-    initials = ''.join([w[0].upper() for w in parts if len(w) >= 3 and w[0].isalpha()])
-    if initials:
-        return initials
-    
-    # Fallback final: as 3 primeiras letras em maiúsculas
-    return u[:3].upper()
+    # Se não tem hífen, retorna a string original (sem derivar iniciais)
+    return u
 
 # --- Função para Processar e Filtrar Dados ---
 def process_dashboard_data(df_raw, filters=None):

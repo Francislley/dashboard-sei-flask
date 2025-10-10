@@ -655,30 +655,14 @@
       const u = String(unidade || '').trim();
       if (!u) return '';
 
-      // Prioridade 1: Se tem hífen, pega a parte depois do hífen (ex: SMCL-ASTEC -> ASTEC)
+      // Prioridade: Se tem hífen, pega a parte depois do hífen (ex: SMCL-ASTEC -> ASTEC)
       const hyphenIndex = u.indexOf('-');
       if (hyphenIndex !== -1) {
         return u.substring(hyphenIndex + 1).trim();
       }
 
-      // Prioridade 2: Se não tem hífen, mas é uma sigla curta (2 a 5 caracteres, todas maiúsculas)
-      // Assumimos que siglas como "ASTEC", "DPE" já são a sigla desejada.
-      // Ajuste o limite de 5 se suas siglas forem mais longas.
-      if (u.length >= 2 && u.length <= 5 && u === u.toUpperCase()) {
-        return u;
-      }
-      
-      // Prioridade 3: Fallback para iniciais de palavras (para nomes mais longos sem hífen)
-      const parts = u.split(/[\s/|-]+/).filter(Boolean);
-      const initials = parts
-        .filter(w => w.length >= 3)
-        .slice(0, 4)
-        .map(w => w[0].toUpperCase())
-        .join('');
-      if (initials) return initials;
-      
-      // Fallback final: as 3 primeiras letras em maiúsculas
-      return u.substring(0, 3).toUpperCase();
+      // Se não tem hífen, retorna a string original (sem derivar iniciais)
+      return u;
     }
 
     // Inicialização do dashboard ao carregar a página
