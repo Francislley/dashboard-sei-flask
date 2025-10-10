@@ -489,7 +489,7 @@
 
     <!-- Busca rápida acima da tabela -->
     <div class="search-global">
-      <span class="icon">��</span>
+      <span class="icon">🔎</span>
       <input id="inputSearch" type="text" placeholder="Busca rápida (Digite qualquer termo para filtrar os dados)..." />
     </div>
 
@@ -923,7 +923,6 @@
         legend: { show: false },
         series: [
           {
-            name: 'Unidade',
             type: 'pie',
             radius: ['30%', '55%'],
             center: ['50%', '50%'],
@@ -1127,14 +1126,13 @@
       };
     }
 
-    // FUNÇÃO escapeHtml CORRIGIDA
     function escapeHtml(str) {
       return String(str || '')
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;') // Corrigido aqui
-        .replaceAll('\'', '&#039;'); // Corrigido aqui
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
     }
   </script>
 </body>
