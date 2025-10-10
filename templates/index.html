@@ -957,27 +957,16 @@
       const users = barData.map(d => d.name);
       const counts = barData.map(d => d.value);
 
-      const w = dom.barChart.clientWidth || 800;
-      
-      // Ajuste dinâmico do espaço à esquerda para os rótulos do eixo Y
-      // Em telas menores, pode ser necessário mais espaço para os nomes
-      let dynamicLeftSpace;
-      if (w < 600) { // Para telas pequenas (celulares)
-        dynamicLeftSpace = Math.max(120, Math.round(w * 0.45)); // 45% da largura, mínimo de 120px
-      } else if (w < 900) { // Para tablets
-        dynamicLeftSpace = Math.max(150, Math.round(w * 0.35)); // 35% da largura, mínimo de 150px
-      } else { // Para desktops
-        dynamicLeftSpace = Math.max(180, Math.round(w * 0.25)); // 25% da largura, mínimo de 180px
-      }
-      
-      // A largura real disponível para o texto do rótulo
-      const axisLabelWidth = dynamicLeftSpace - 10; // Subtrai um pouco de padding
+      // Definimos o espaço para o rótulo do eixo Y como 25% da largura total do gráfico
+      const labelAreaWidth = '25%'; 
+      // O restante (75%) será para as barras, com uma pequena margem à direita
+      const barAreaRightMargin = '3%'; 
 
       const option = {
         backgroundColor: 'transparent',
         grid: { 
-          left: dynamicLeftSpace, // Usar o espaço dinâmico
-          right: '3%', // Usar porcentagem para ser mais responsivo
+          left: labelAreaWidth, // Ocupa 25% da largura do contêiner do gráfico para os rótulos
+          right: barAreaRightMargin, // 3% de margem à direita
           top: '5%',
           bottom: '3%',
           containLabel: true // Garante que os rótulos do eixo Y não sejam cortados pelo grid
@@ -1003,13 +992,12 @@
           axisLine: { lineStyle: { color: '#374151' } },
           axisLabel: {
             color: '#cbd5e1',
-            align: 'left',
-            width: axisLabelWidth, // Usar a largura dinâmica
-            overflow: 'truncate',
-            ellipsis: '...',
+            align: 'left', // Alinha o texto do rótulo à esquerda
+            width: '100%', // Ocupa 100% da largura disponível para o rótulo (que é o 'left' do grid)
+            overflow: 'truncate', // Trunca o texto se for muito longo
+            ellipsis: '...', // Adiciona reticências ao truncar
             interval: 0, // Garante que todos os rótulos sejam exibidos
-            // Adicionar um pouco de padding à direita do texto para não colar na barra
-            padding: [0, 5, 0, 0] 
+            padding: [0, 5, 0, 0] // Adiciona um pequeno padding à direita do texto para não colar na barra
           }
         },
         series: [
@@ -1139,7 +1127,7 @@
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+        .replaceAll('\'', '&#039;');
     }
   </script>
 </body>
