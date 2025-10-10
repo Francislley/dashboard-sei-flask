@@ -958,13 +958,30 @@
       const counts = barData.map(d => d.value);
 
       const w = dom.barChart.clientWidth || 800;
-      // Aumentado o espaço para os rótulos do eixo Y
-      const leftSpace = Math.max(200, Math.round(w * 0.30) - 16); // Mínimo de 200px, ou 30% da largura
-      const axisLabelWidth = Math.max(180, leftSpace - 24); // Mínimo de 180px
+      
+      // Ajuste dinâmico do espaço à esquerda para os rótulos do eixo Y
+      // Em telas menores, pode ser necessário mais espaço para os nomes
+      let dynamicLeftSpace;
+      if (w < 600) { // Para telas pequenas (celulares)
+        dynamicLeftSpace = Math.max(120, Math.round(w * 0.45)); // 45% da largura, mínimo de 120px
+      } else if (w < 900) { // Para tablets
+        dynamicLeftSpace = Math.max(150, Math.round(w * 0.35)); // 35% da largura, mínimo de 150px
+      } else { // Para desktops
+        dynamicLeftSpace = Math.max(180, Math.round(w * 0.25)); // 25% da largura, mínimo de 180px
+      }
+      
+      // A largura real disponível para o texto do rótulo
+      const axisLabelWidth = dynamicLeftSpace - 10; // Subtrai um pouco de padding
 
       const option = {
         backgroundColor: 'transparent',
-        grid: { left: leftSpace, right: 16, top: 24, bottom: 18 },
+        grid: { 
+          left: dynamicLeftSpace, // Usar o espaço dinâmico
+          right: '3%', // Usar porcentagem para ser mais responsivo
+          top: '5%',
+          bottom: '3%',
+          containLabel: true // Garante que os rótulos do eixo Y não sejam cortados pelo grid
+        },
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
@@ -987,10 +1004,12 @@
           axisLabel: {
             color: '#cbd5e1',
             align: 'left',
-            width: axisLabelWidth,
+            width: axisLabelWidth, // Usar a largura dinâmica
             overflow: 'truncate',
             ellipsis: '...',
-            interval: 0 // Garante que todos os rótulos sejam exibidos, se houver espaço
+            interval: 0, // Garante que todos os rótulos sejam exibidos
+            // Adicionar um pouco de padding à direita do texto para não colar na barra
+            padding: [0, 5, 0, 0] 
           }
         },
         series: [
@@ -1120,7 +1139,7 @@
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
-        .replaceAll('\'', '&#039;');
+        .replaceAll("'", '&#039;');
     }
   </script>
 </body>
