@@ -960,12 +960,12 @@
       const option = {
         backgroundColor: 'transparent',
         // --- INÍCIO DAS ALTERAÇÕES NO 'grid' ---
-        grid: { 
-          left: '5%', // Margem esquerda do grid (para os nomes dos usuários)
-          right: '5%', // Margem direita do grid
-          top: '5%',   // <--- ALTERADO: Aumenta a margem superior para acomodar o eixo X no topo
-          bottom: '5%',// Margem inferior
-          containLabel: true // Garante que os rótulos dos eixos sejam totalmente visíveis
+        grid: {
+          left: '25%', // <--- ALTERADO: Aumenta o espaço para os rótulos do eixo Y para 25%
+          right: '1%', // <--- ALTERADO: Reduz a margem direita para um valor mínimo (1%)
+          top: '10%',
+          bottom: '3%',
+          containLabel: true
         },
         // --- FIM DAS ALTERAÇÕES NO 'grid' ---
         tooltip: {
