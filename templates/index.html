@@ -455,7 +455,7 @@
         margin-bottom: var(--gap); /* Espaço abaixo do painel */
       }
     }
-    
+
     /* Mobile landscape and smaller tablets */
     @media (max-width: 768px) {
       .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 2 cards por linha */
@@ -1017,46 +1017,39 @@
       const users = barData.map(d => d.name);
       const counts = barData.map(d => d.value);
 
-      // NOVO: Referências aos elementos do painel de informações
-      const selectedUserNameDom = document.getElementById('selectedUserName');
-      const selectedUserDocsDom = document.getElementById('selectedUserDocs');
-
       const option = {
         backgroundColor: 'transparent',
         grid: { 
-          left: '20%', // Margem esquerda do grid (para os nomes dos usuários)
-          right: '5%', // Margem direita do grid
-          top: '10%',   // Aumenta a margem superior para acomodar o eixo X no topo
-          bottom: '3%',// Margem inferior
-          containLabel: true // Garante que os rótulos dos eixos sejam totalmente visíveis
+          left: '20%',
+          right: '5%',
+          top: '10%',
+          bottom: '3%',
+          containLabel: true
         },
-        // REMOVIDO: A configuração de tooltip do ECharts para evitar redundância com o painel.
-        // Se você ainda quiser um tooltip pequeno ao passar o mouse, pode reativar este bloco:
-        /*
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
           formatter: (params) => {
             const p = params[0];
             return `<b>${escapeHtml(p.name)}</b><br/>Documentos: ${p.value}`;
-          }
+          },
+          confine: true // <--- ADICIONADO: Garante que o tooltip não saia dos limites do gráfico
         },
-        */
         xAxis: {
           type: 'value',
           position: 'top',
           name: 'Quantidade de Documentos',
           nameLocation: 'middle',
           nameGap: 25,
-          splitLine: { lineStyle: { color: '#1f2937' } },
-          axisLine: { lineStyle: { color: '#374151' } },
+          splitLine: { show: false }, // <--- ALTERADO: Remove as linhas de grade verticais para um visual mais clean
+          axisLine: { show: false }, // <--- ALTERADO: Remove a linha principal do eixo X
           axisLabel: { color: '#cbd5e1' }
         },
         yAxis: {
           type: 'category',
           data: users,
           axisTick: { show: false },
-          axisLine: { lineStyle: { color: '#374151' } },
+          axisLine: { show: false }, // <--- ALTERADO: Remove a linha principal do eixo Y
           axisLabel: {
             color: '#cbd5e1',
             align: 'left',
@@ -1074,7 +1067,27 @@
             itemStyle: {
               color: '#60a5fa',
               borderRadius: [4, 6, 6, 4]
+            },
+            // --- INÍCIO DAS NOVAS CONFIGURAÇÕES DE LABEL E EMPHASIS ---
+            label: { // <--- ADICIONADO: Exibe o valor diretamente na barra
+              show: true,
+              position: 'right', // Posição do rótulo (à direita da barra)
+              valueAnimation: true, // Animação suave para o valor
+              formatter: '{@[0]}', // Formato para exibir o valor do dado
+              color: '#e5e7eb', // Cor do texto do rótulo
+              fontSize: 12,
+              fontWeight: 'bold',
+              distance: 5 // Distância do rótulo em relação à ponta da barra
+            },
+            emphasis: { // <--- ADICIONADO: Efeito ao passar o mouse sobre a barra
+              itemStyle: {
+                color: '#4a8dfa', // Cor ligeiramente mais clara/brilhante no hover
+                shadowBlur: 10, // Desfoque da sombra
+                shadowOffsetX: 0, // Deslocamento X da sombra
+                shadowColor: 'rgba(0, 0, 0, 0.5)' // Cor da sombra
+              }
             }
+            // --- FIM DAS NOVAS CONFIGURAÇÕES DE LABEL E EMPHASIS ---
           }
         ]
       };
@@ -1084,11 +1097,6 @@
       bar.on('click', (p) => {
         const nome = p.name;
         if (!nome) return;
-
-        // NOVO: Atualiza o conteúdo do painel de informações
-        selectedUserNameDom.textContent = nome;
-        selectedUserDocsDom.textContent = `Documentos: ${p.value}`;
-
         toggleSelection(state.selected.usuario, nome);
         applyFiltersAndRender();
       });
