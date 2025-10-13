@@ -334,7 +334,13 @@
       width: 90%; /* Gráfico de donut ocupa 85% do card */
       margin: 0 auto; /* Centraliza o gráfico dentro do card */
     }
-    #barChart { height: clamp(340px, 52vw, 520px); }
+
+    #barChart {
+      width: 95%; /* <--- ADICIONADO: Ocupa 95% da largura do contêiner pai */
+      margin: 0 auto; /* <--- ADICIONADO: Centraliza horizontalmente o #barChart dentro do .chart-card */
+      height: clamp(340px, 52vw, 520px);
+      /* Se você manteve o painel de informações lateral, remova 'flex: 1;' daqui, pois 'width' e 'margin: auto' farão o trabalho. */
+    }
 
     /* Tabela */
     .table-card {
@@ -959,58 +965,72 @@
 
       const option = {
         backgroundColor: 'transparent',
-        // --- INÍCIO DAS ALTERAÇÕES NO 'grid' ---
-        grid: {
-          left: '15%', // <--- ALTERADO: Aumenta o espaço para os rótulos do eixo Y para 25%
-          right: '3%', // <--- ALTERADO: Reduz a margem direita para um valor mínimo (1%)
+        grid: { 
+          left: '25%', // <--- MANTIDO: 25% da largura do contêiner ECharts para os rótulos do eixo Y
+          right: '0%', // <--- ALTERADO: 0% para que as barras ocupem o restante do espaço à direita
           top: '10%',
           bottom: '3%',
           containLabel: true
         },
-        // --- FIM DAS ALTERAÇÕES NO 'grid' ---
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
           formatter: (params) => {
             const p = params[0];
             return `<b>${escapeHtml(p.name)}</b><br/>Documentos: ${p.value}`;
-          }
+          },
+          confine: true
         },
-        // --- INÍCIO DAS ALTERAÇÕES NO 'xAxis' ---
         xAxis: {
           type: 'value',
-          position: 'top', // <--- ADICIONADO: Move o eixo X para o topo do gráfico
-//          name: '', // <--- ADICIONADO: Nome do eixo X, similar ao 'label' do Google Charts
-          nameLocation: 'middle', // Posição do nome do eixo ('start', 'middle', 'end')
-          nameGap: 25, // Distância entre o nome do eixo e o eixo em si
-          splitLine: { lineStyle: { color: '#1f2937' } },
-          axisLine: { lineStyle: { color: '#374151' } },
+          position: 'top',
+          name: 'Quantidade de Documentos',
+          nameLocation: 'middle',
+          nameGap: 25,
+          splitLine: { show: false },
+          axisLine: { show: false },
           axisLabel: { color: '#cbd5e1' }
         },
-        // --- FIM DAS ALTERAÇÕES NO 'xAxis' ---
         yAxis: {
           type: 'category',
           data: users,
           axisTick: { show: false },
-          axisLine: { lineStyle: { color: '#374151' } },
+          axisLine: { show: false },
           axisLabel: {
             color: '#cbd5e1',
             align: 'left',
             overflow: 'truncate',
             ellipsis: '...',
             interval: 0,
-            margin: 200
+            margin: 5 // <--- ALTERADO: Reduz a margem para evitar que os rótulos empurrem o gráfico para fora em telas pequenas
           }
         },
         series: [
           {
             type: 'bar',
             data: counts,
-            // barWidth: '90%', // <--- OPCIONAL: Se quiser uma largura de barra fixa como no Google Charts
-            barWidth: Math.min(36, Math.max(18, 360 / Math.max(6, counts.length))), // Mantido o dinâmico
+            barWidth: Math.min(36, Math.max(18, 360 / Math.max(6, counts.length))),
             itemStyle: {
               color: '#60a5fa',
               borderRadius: [4, 6, 6, 4]
+            },
+            label: {
+              show: true,
+              position: 'right',
+              valueAnimation: true,
+              formatter: '{@[0]}',
+              color: '#e5e7eb',
+              fontSize: 12,
+              fontWeight: 'bold',
+              distance: 5
+            },
+            emphasis: {
+              itemStyle: {
+                color: '#4a8dfa',
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowColor: 'rgba(0, 0, 0, 0.5)'
+              }
             }
           }
         ]
