@@ -334,12 +334,7 @@
       width: 90%; /* Gráfico de donut ocupa 85% do card */
       margin: 0 auto; /* Centraliza o gráfico dentro do card */
     }
-
-        /* AJUSTE: para que #barChart ocupe o espaço restante no flexbox */
-    #barChart {
-      flex: 1; /* <--- ADICIONE ESTA LINHA */
-      height: clamp(340px, 52vw, 520px);
-    }
+    #barChart { height: clamp(340px, 52vw, 520px); }
 
     /* Tabela */
     .table-card {
@@ -438,24 +433,13 @@
         background-color: var(--border);
     }
 
-        /* Responsividade mobile */
+    /* Responsividade mobile */
     @media (max-width: 860px) {
-      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .filters-grid { grid-template-columns: 1fr; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 2 cards por linha em telas menores que 860px */
+      .filters-grid { grid-template-columns: 1fr; } /* Um filtro por linha */
       .chart-header { flex-direction: column; align-items: flex-start; gap: 8px; }
       .topn { align-self: stretch; justify-content: space-between; }
-
-      /* AJUSTE: Responsividade para telas menores para o gráfico de barras */
-      .bar-chart-content {
-        flex-direction: column; /* Empilha o painel e o gráfico verticalmente em telas pequenas */
-      }
-      .chart-info-panel {
-        flex: 0 0 auto; /* Altura automática, largura total */
-        width: 100%;
-        margin-bottom: var(--gap); /* Espaço abaixo do painel */
-      }
     }
-
     /* Mobile landscape and smaller tablets */
     @media (max-width: 768px) {
       .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 2 cards por linha */
@@ -473,39 +457,6 @@
         padding: 8px 6px;
         font-size: 13px;
       }
-    }
-        /* NOVO: Estilos para o contêiner do painel e do gráfico de barras */
-    .bar-chart-content {
-      display: flex;
-      gap: var(--gap);
-      flex-grow: 1;
-      align-items: stretch;
-    }
-
-    /* NOVO: Estilos para o painel de informações */
-    .chart-info-panel {
-      flex: 0 0 25%;
-      background: var(--chip-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px;
-      box-shadow: var(--shadow);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: flex-start;
-      min-width: 150px;
-    }
-
-    .chart-info-panel .panel-title {
-      font-weight: 600;
-      color: var(--primary);
-      margin-bottom: 8px;
-    }
-
-    .chart-info-panel .panel-content p {
-      margin: 0;
-      padding: 2px 0;
     }
   </style>
 </head>
@@ -625,18 +576,7 @@
           <button data-n="all">Todos</button>
         </div>
       </div>
-      <!-- NOVO: Contêiner para o painel de informações e o gráfico -->
-      <div class="bar-chart-content">
-        <!-- NOVO: Painel de informações do usuário selecionado -->
-        <div id="barChartInfoPanel" class="chart-info-panel">
-          <div class="panel-title">Usuário Selecionado</div>
-          <div class="panel-content">
-            <p id="selectedUserName">Nenhum usuário selecionado</p>
-            <p id="selectedUserDocs">Documentos: --</p>
-          </div>
-        </div>
-        <div id="barChart"></div>
-      </div>
+      <div id="barChart"></div>
     </section>
 
     <!-- Tabela -->
@@ -1019,37 +959,40 @@
 
       const option = {
         backgroundColor: 'transparent',
+        // --- INÍCIO DAS ALTERAÇÕES NO 'grid' ---
         grid: { 
-          left: '20%',
-          right: '5%',
-          top: '10%',
-          bottom: '3%',
-          containLabel: true
+          left: '20%', // Margem esquerda do grid (para os nomes dos usuários)
+          right: '5%', // Margem direita do grid
+          top: '10%',   // <--- ALTERADO: Aumenta a margem superior para acomodar o eixo X no topo
+          bottom: '3%',// Margem inferior
+          containLabel: true // Garante que os rótulos dos eixos sejam totalmente visíveis
         },
+        // --- FIM DAS ALTERAÇÕES NO 'grid' ---
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
           formatter: (params) => {
             const p = params[0];
             return `<b>${escapeHtml(p.name)}</b><br/>Documentos: ${p.value}`;
-          },
-          confine: true // <--- ADICIONADO: Garante que o tooltip não saia dos limites do gráfico
+          }
         },
+        // --- INÍCIO DAS ALTERAÇÕES NO 'xAxis' ---
         xAxis: {
           type: 'value',
-          position: 'top',
-          name: 'Quantidade de Documentos',
-          nameLocation: 'middle',
-          nameGap: 25,
-          splitLine: { show: false }, // <--- ALTERADO: Remove as linhas de grade verticais para um visual mais clean
-          axisLine: { show: false }, // <--- ALTERADO: Remove a linha principal do eixo X
+          position: 'top', // <--- ADICIONADO: Move o eixo X para o topo do gráfico
+//          name: '', // <--- ADICIONADO: Nome do eixo X, similar ao 'label' do Google Charts
+          nameLocation: 'middle', // Posição do nome do eixo ('start', 'middle', 'end')
+          nameGap: 25, // Distância entre o nome do eixo e o eixo em si
+          splitLine: { lineStyle: { color: '#1f2937' } },
+          axisLine: { lineStyle: { color: '#374151' } },
           axisLabel: { color: '#cbd5e1' }
         },
+        // --- FIM DAS ALTERAÇÕES NO 'xAxis' ---
         yAxis: {
           type: 'category',
           data: users,
           axisTick: { show: false },
-          axisLine: { show: false }, // <--- ALTERADO: Remove a linha principal do eixo Y
+          axisLine: { lineStyle: { color: '#374151' } },
           axisLabel: {
             color: '#cbd5e1',
             align: 'left',
@@ -1063,31 +1006,12 @@
           {
             type: 'bar',
             data: counts,
-            barWidth: Math.min(36, Math.max(18, 360 / Math.max(6, counts.length))),
+            // barWidth: '90%', // <--- OPCIONAL: Se quiser uma largura de barra fixa como no Google Charts
+            barWidth: Math.min(36, Math.max(18, 360 / Math.max(6, counts.length))), // Mantido o dinâmico
             itemStyle: {
               color: '#60a5fa',
               borderRadius: [4, 6, 6, 4]
-            },
-            // --- INÍCIO DAS NOVAS CONFIGURAÇÕES DE LABEL E EMPHASIS ---
-            label: { // <--- ADICIONADO: Exibe o valor diretamente na barra
-              show: true,
-              position: 'right', // Posição do rótulo (à direita da barra)
-              valueAnimation: true, // Animação suave para o valor
-              formatter: '{@[0]}', // Formato para exibir o valor do dado
-              color: '#e5e7eb', // Cor do texto do rótulo
-              fontSize: 12,
-              fontWeight: 'bold',
-              distance: 5 // Distância do rótulo em relação à ponta da barra
-            },
-            emphasis: { // <--- ADICIONADO: Efeito ao passar o mouse sobre a barra
-              itemStyle: {
-                color: '#4a8dfa', // Cor ligeiramente mais clara/brilhante no hover
-                shadowBlur: 10, // Desfoque da sombra
-                shadowOffsetX: 0, // Deslocamento X da sombra
-                shadowColor: 'rgba(0, 0, 0, 0.5)' // Cor da sombra
-              }
             }
-            // --- FIM DAS NOVAS CONFIGURAÇÕES DE LABEL E EMPHASIS ---
           }
         ]
       };
