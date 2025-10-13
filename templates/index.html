@@ -331,10 +331,10 @@
     /* Alturas dos gráficos (donut maior) */
     #pieChart {
       height: clamp(320px, 48vw, 460px);
-      width: 85%; /* Gráfico de donut ocupa 85% do card */
+      width: 90%; /* Gráfico de donut ocupa 85% do card */
       margin: 0 auto; /* Centraliza o gráfico dentro do card */
     }
-    #barChart { height: clamp(340px, 20vw, 520px); }
+    #barChart { height: clamp(340px, 52vw, 520px); }
 
     /* Tabela */
     .table-card {
@@ -961,11 +961,11 @@
         backgroundColor: 'transparent',
         // --- INÍCIO DAS ALTERAÇÕES NO 'grid' ---
         grid: { 
-          left: '20%', // 1. Margem esquerda do grid: 20% da largura total do card do gráfico
-          right: '5%', // 2. Margem direita do grid: 5% da largura total do card do gráfico
-          top: '5%',   // Margem superior
+          left: '20%', // Margem esquerda do grid (para os nomes dos usuários)
+          right: '5%', // Margem direita do grid
+          top: '10%',   // <--- ALTERADO: Aumenta a margem superior para acomodar o eixo X no topo
           bottom: '3%',// Margem inferior
-          containLabel: true // 3. Garante que os rótulos do eixo Y sejam totalmente visíveis
+          containLabel: true // Garante que os rótulos dos eixos sejam totalmente visíveis
         },
         // --- FIM DAS ALTERAÇÕES NO 'grid' ---
         tooltip: {
@@ -976,33 +976,38 @@
             return `<b>${escapeHtml(p.name)}</b><br/>Documentos: ${p.value}`;
           }
         },
+        // --- INÍCIO DAS ALTERAÇÕES NO 'xAxis' ---
         xAxis: {
           type: 'value',
+          position: 'top', // <--- ADICIONADO: Move o eixo X para o topo do gráfico
+          name: 'Quantidade de Documentos', // <--- ADICIONADO: Nome do eixo X, similar ao 'label' do Google Charts
+          nameLocation: 'middle', // Posição do nome do eixo ('start', 'middle', 'end')
+          nameGap: 25, // Distância entre o nome do eixo e o eixo em si
           splitLine: { lineStyle: { color: '#1f2937' } },
           axisLine: { lineStyle: { color: '#374151' } },
           axisLabel: { color: '#cbd5e1' }
         },
+        // --- FIM DAS ALTERAÇÕES NO 'xAxis' ---
         yAxis: {
           type: 'category',
           data: users,
           axisTick: { show: false },
           axisLine: { lineStyle: { color: '#374151' } },
-          // --- INÍCIO DAS ALTERAÇÕES NO 'yAxis.axisLabel' ---
           axisLabel: {
             color: '#cbd5e1',
-            align: 'left', // 4. Alinha o texto do rótulo à esquerda
-            overflow: 'truncate', // 5. Define que o texto deve ser truncado se exceder o espaço
-            ellipsis: '...', // 6. Caractere a ser usado para o truncamento
-            interval: 0, // 7. Garante que todos os rótulos sejam exibidos
-            margin: 5 // 8. Adiciona uma pequena margem entre o rótulo e a linha do eixo
+            align: 'left',
+            overflow: 'truncate',
+            ellipsis: '...',
+            interval: 0,
+            margin: 5
           }
-          // --- FIM DAS ALTERAÇÕES NO 'yAxis.axisLabel' ---
         },
         series: [
           {
             type: 'bar',
             data: counts,
-            barWidth: Math.min(36, Math.max(18, 360 / Math.max(6, counts.length))),
+            // barWidth: '90%', // <--- OPCIONAL: Se quiser uma largura de barra fixa como no Google Charts
+            barWidth: Math.min(36, Math.max(18, 360 / Math.max(6, counts.length))), // Mantido o dinâmico
             itemStyle: {
               color: '#60a5fa',
               borderRadius: [4, 6, 6, 4]
