@@ -977,7 +977,11 @@
           axisPointer: { type: 'shadow' },
           formatter: (params) => {
             const p = params[0];
-            return `<b>${escapeHtml(p.name)}</b><br/>Documentos: ${p.value}`;
+            const userName = escapeHtml(p.name);
+            const userDocs = p.value;
+            // Acessa a propriedade 'sector' que agora vem do backend
+            const userSector = p.data.sector || 'Setor não Informado'; 
+            return `<b>${userName}</b><br/>Setor: ${userSector}<br/>Documentos: ${userDocs}`;
           },
           confine: true
         },

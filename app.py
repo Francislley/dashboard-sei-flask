@@ -116,15 +116,34 @@ def process_dashboard_data(df_raw, filters=None):
 
     # --- Dados para Gráfico de Barras (Documentos por Usuário) ---
     bar_chart_data = []
-    if 'Usuario' in df.columns:
+    # Verifica se as colunas 'Usuario' e 'Setor' existem no DataFrame
+    if 'Usuario' in df.columns and 'Sigla' in df.columns:
+        # Cria um mapa de usuário para setor.
+        # Se um usuário tiver múltiplas entradas com setores diferentes,
+        # ele pegará o último setor encontrado para aquele usuário.
+        user_to_sector_map = df[['Usuario', 'Sigla']].drop_duplicates(subset=['Usuario'], keep='last').set_index('Usuario')['Sigla'].to_dict()
+
+        usuario_counts = df['Usuario'].value_counts().reset_index()
+        usuario_counts.columns = ['Usuario', 'Count']
+        bar_chart_data = [
+            {
+                'name': row['Usuario'],
+                'value': row['Count'],
+                'sector': user_to_sector_map.get(row['Usuario'], 'Setor Desconhecido') # Adiciona a informação do setor aqui
+            }
+            for index, row in usuario_counts.iterrows()
+        ]
+        # Ordena por valor (Count) decrescente
+        bar_chart_data = sorted(bar_chart_data, key=lambda x: x['value'], reverse=True)
+    elif 'Usuario' in df.columns: # Caso a coluna 'Setor' não exista, mantém o comportamento anterior
         usuario_counts = df['Usuario'].value_counts().reset_index()
         usuario_counts.columns = ['Usuario', 'Count']
         bar_chart_data = [
             {'name': row['Usuario'], 'value': row['Count']}
             for index, row in usuario_counts.iterrows()
         ]
-        # Ordena por valor (Count) decrescente
         bar_chart_data = sorted(bar_chart_data, key=lambda x: x['value'], reverse=True)
+    # Se nem 'Usuario' nem 'Setor' existirem, bar_chart_data permanece vazio, o que é o comportamento esperado.
 
     # --- Dados para Tabela ---
     # Seleciona as colunas na ordem desejada e converte para lista de dicionários
