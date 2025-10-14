@@ -25,7 +25,8 @@ def load_raw_data_from_sheet():
         df = pd.DataFrame(data)
 
         # Limpeza básica: substituir vazios por NA
-        df.replace('', pd.NA, inplace=True)
+        # CORREÇÃO: Evita o FutureWarning do Pandas
+        df = df.replace('', pd.NA)
 
         # Tentar padronizar nomes de colunas comuns (com e sem acento)
         if 'Usuário' in df.columns and 'Usuario' not in df.columns:
