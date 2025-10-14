@@ -130,7 +130,18 @@ def process_dashboard_data(df_raw, filters=None):
         # Usamos drop_duplicates para garantir que cada usuário tenha apenas um setor associado no mapa.
         # 'keep='first'' significa que se um usuário aparecer múltiplas vezes com setores diferentes,
         # o primeiro setor encontrado será o associado.
+        
+        # --- DEBUG: Verifique se as colunas estão presentes no DataFrame filtrado ---
+        print(f"DEBUG: 'Usuario' está em df.columns: {'Usuario' in df.columns}, 'Sigla' está em df.columns: {'Sigla' in df.columns}")
+        print(f"DEBUG: Valores únicos de 'Usuario' (primeiros 5): {df['Usuario'].unique().tolist()[:5]}...")
+        print(f"DEBUG: Valores únicos de 'Sigla' (primeiros 5): {df['Sigla'].unique().tolist()[:5]}...")
+        # --- FIM DEBUG ---
+        
         user_to_sector_map = df[['Usuario', 'Sigla']].drop_duplicates(subset=['Usuario'], keep='first').set_index('Usuario')['Sigla'].to_dict()
+
+        # --- DEBUG: Verifique o mapa gerado ---
+        print(f"DEBUG: user_to_sector_map (primeiros 5 itens): {list(user_to_sector_map.items())[:5]}...")
+        # --- FIM DEBUG ---
 
         usuario_counts = df['Usuario'].value_counts().reset_index()
         usuario_counts.columns = ['Usuario', 'Count']
@@ -144,6 +155,11 @@ def process_dashboard_data(df_raw, filters=None):
         ]
         # Ordena por valor (Count) decrescente
         bar_chart_data = sorted(bar_chart_data, key=lambda x: x['value'], reverse=True)
+        
+        # --- DEBUG: Verifique os dados finais do gráfico de barras ---
+        print(f"DEBUG: bar_chart_data final (primeiros 5 itens): {bar_chart_data[:5]}...")
+        # --- FIM DEBUG ---
+
     elif 'Usuario' in df.columns: # Caso a coluna 'Sigla' não exista, mantém o comportamento anterior (sem setor)
         usuario_counts = df['Usuario'].value_counts().reset_index()
         usuario_counts.columns = ['Usuario', 'Count']
