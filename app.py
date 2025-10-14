@@ -33,13 +33,23 @@ def load_raw_data_from_sheet():
         if 'Descrição' in df.columns and 'Descricao' not in df.columns:
             df.rename(columns={'Descrição': 'Descricao'}, inplace=True)
 
+        # --- DEBUG (load_raw_data): Colunas e primeiras linhas antes do strip ---
+        print(f"DEBUG (load_raw_data): Colunas após carga e renomeação: {df.columns.tolist()}")
+        print(f"DEBUG (load_raw_data): Primeiras 5 linhas do DataFrame (antes do strip):\n{df.head().to_string()}")
+        # --- FIM DEBUG ---
+
         # Adicionar stripping de espaços para colunas críticas para garantir correspondência exata
         for col in ['Usuario', 'Sigla', 'Unidade', 'Processo', 'Documento', 'Descricao', 'CPF']:
             if col in df.columns:
                 # Converte para string antes de aplicar strip, trata NAs
                 df[col] = df[col].astype(str).str.strip()
                 # Substitui strings vazias resultantes do strip por NA novamente
-                df[col].replace('', pd.NA, inplace=True)
+                # CORREÇÃO: Evita o FutureWarning do Pandas
+                df[col] = df[col].replace('', pd.NA)
+        
+        # --- DEBUG (load_raw_data): Primeiras linhas após o strip ---
+        print(f"DEBUG (load_raw_data): Primeiras 5 linhas do DataFrame (após o strip):\n{df.head().to_string()}")
+        # --- FIM DEBUG ---
 
         # Converter coluna 'Data' para datetime, se existir
         if 'Data' in df.columns:
@@ -51,8 +61,6 @@ def load_raw_data_from_sheet():
         return df
     except Exception as e:
         print(f"Erro ao carregar dados da planilha: {e}")
-        # Para depuração, você pode querer levantar o erro ou retornar um DataFrame vazio
-        # raise e # Descomente para ver o erro completo no log do PythonAnywhere
         return pd.DataFrame() # Retorna DataFrame vazio em caso de erro
 
 # --- Função para Processar e Filtrar Dados ---
@@ -126,21 +134,21 @@ def process_dashboard_data(df_raw, filters=None):
     bar_chart_data = []
     # Verifica se as colunas 'Usuario' e 'Sigla' existem no DataFrame
     if 'Usuario' in df.columns and 'Sigla' in df.columns:
+        # --- DEBUG (process_dashboard_data): Verifique se as colunas estão presentes no DataFrame filtrado ---
+        print(f"DEBUG (process_dashboard_data): 'Usuario' está em df.columns: {'Usuario' in df.columns}, 'Sigla' está em df.columns: {'Sigla' in df.columns}")
+        print(f"DEBUG (process_dashboard_data): Valores únicos de 'Usuario' (primeiros 5): {df['Usuario'].dropna().unique().tolist()[:5]}...")
+        print(f"DEBUG (process_dashboard_data): Valores únicos de 'Sigla' (primeiros 5): {df['Sigla'].dropna().unique().tolist()[:5]}...")
+        # --- FIM DEBUG ---
+        
         # Cria um mapa de usuário para setor (Sigla).
         # Usamos drop_duplicates para garantir que cada usuário tenha apenas um setor associado no mapa.
         # 'keep='first'' significa que se um usuário aparecer múltiplas vezes com setores diferentes,
         # o primeiro setor encontrado será o associado.
-        
-        # --- DEBUG: Verifique se as colunas estão presentes no DataFrame filtrado ---
-        print(f"DEBUG: 'Usuario' está em df.columns: {'Usuario' in df.columns}, 'Sigla' está em df.columns: {'Sigla' in df.columns}")
-        print(f"DEBUG: Valores únicos de 'Usuario' (primeiros 5): {df['Usuario'].unique().tolist()[:5]}...")
-        print(f"DEBUG: Valores únicos de 'Sigla' (primeiros 5): {df['Sigla'].unique().tolist()[:5]}...")
-        # --- FIM DEBUG ---
-        
-        user_to_sector_map = df[['Usuario', 'Sigla']].drop_duplicates(subset=['Usuario'], keep='first').set_index('Usuario')['Sigla'].to_dict()
+        # Garante que 'Usuario' não seja NA antes de usar como índice
+        user_to_sector_map = df[['Usuario', 'Sigla']].dropna(subset=['Usuario']).drop_duplicates(subset=['Usuario'], keep='first').set_index('Usuario')['Sigla'].to_dict()
 
-        # --- DEBUG: Verifique o mapa gerado ---
-        print(f"DEBUG: user_to_sector_map (primeiros 5 itens): {list(user_to_sector_map.items())[:5]}...")
+        # --- DEBUG (process_dashboard_data): Verifique o mapa gerado ---
+        print(f"DEBUG (process_dashboard_data): user_to_sector_map (primeiros 5 itens): {list(user_to_sector_map.items())[:5]}...")
         # --- FIM DEBUG ---
 
         usuario_counts = df['Usuario'].value_counts().reset_index()
@@ -156,8 +164,8 @@ def process_dashboard_data(df_raw, filters=None):
         # Ordena por valor (Count) decrescente
         bar_chart_data = sorted(bar_chart_data, key=lambda x: x['value'], reverse=True)
         
-        # --- DEBUG: Verifique os dados finais do gráfico de barras ---
-        print(f"DEBUG: bar_chart_data final (primeiros 5 itens): {bar_chart_data[:5]}...")
+        # --- DEBUG (process_dashboard_data): Verifique os dados finais do gráfico de barras ---
+        print(f"DEBUG (process_dashboard_data): bar_chart_data final (primeiros 5 itens): {bar_chart_data[:5]}...")
         # --- FIM DEBUG ---
 
     elif 'Usuario' in df.columns: # Caso a coluna 'Sigla' não exista, mantém o comportamento anterior (sem setor)
@@ -169,15 +177,6 @@ def process_dashboard_data(df_raw, filters=None):
         ]
         bar_chart_data = sorted(bar_chart_data, key=lambda x: x['value'], reverse=True)
     # Se nem 'Usuario' existir, bar_chart_data permanece vazio, o que é o comportamento esperado.
-    elif 'Usuario' in df.columns: # Caso a coluna 'Setor' não exista, mantém o comportamento anterior
-        usuario_counts = df['Usuario'].value_counts().reset_index()
-        usuario_counts.columns = ['Usuario', 'Count']
-        bar_chart_data = [
-            {'name': row['Usuario'], 'value': row['Count']}
-            for index, row in usuario_counts.iterrows()
-        ]
-        bar_chart_data = sorted(bar_chart_data, key=lambda x: x['value'], reverse=True)
-    # Se nem 'Usuario' nem 'Setor' existirem, bar_chart_data permanece vazio, o que é o comportamento esperado.
 
     # --- Dados para Tabela ---
     # Seleciona as colunas na ordem desejada e converte para lista de dicionários

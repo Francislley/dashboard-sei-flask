@@ -979,7 +979,6 @@
             const p = params[0];
             const userName = escapeHtml(p.name);
             const userDocs = p.value;
-            // Acessa a propriedade 'sector' que agora vem do backend (que é a Sigla)
             const userSector = p.data.sector || 'Sigla Não Informada'; // Alterado para 'Sigla Não Informada'
             return `<b>${userName}</b><br/>Sigla: ${userSector}<br/>Documentos: ${userDocs}`; // Alterado para 'Sigla:'
           },
