@@ -33,6 +33,14 @@ def load_raw_data_from_sheet():
         if 'Descrição' in df.columns and 'Descricao' not in df.columns:
             df.rename(columns={'Descrição': 'Descricao'}, inplace=True)
 
+        # Adicionar stripping de espaços para colunas críticas para garantir correspondência exata
+        for col in ['Usuario', 'Sigla', 'Unidade', 'Processo', 'Documento', 'Descricao', 'CPF']:
+            if col in df.columns:
+                # Converte para string antes de aplicar strip, trata NAs
+                df[col] = df[col].astype(str).str.strip()
+                # Substitui strings vazias resultantes do strip por NA novamente
+                df[col].replace('', pd.NA, inplace=True)
+
         # Converter coluna 'Data' para datetime, se existir
         if 'Data' in df.columns:
             # dayfirst=True é crucial se suas datas estão em DD/MM/AAAA
@@ -116,12 +124,13 @@ def process_dashboard_data(df_raw, filters=None):
 
     # --- Dados para Gráfico de Barras (Documentos por Usuário) ---
     bar_chart_data = []
-    # Verifica se as colunas 'Usuario' e 'Setor' existem no DataFrame
+    # Verifica se as colunas 'Usuario' e 'Sigla' existem no DataFrame
     if 'Usuario' in df.columns and 'Sigla' in df.columns:
-        # Cria um mapa de usuário para setor.
-        # Se um usuário tiver múltiplas entradas com setores diferentes,
-        # ele pegará o último setor encontrado para aquele usuário.
-        user_to_sector_map = df[['Usuario', 'Sigla']].drop_duplicates(subset=['Usuario'], keep='last').set_index('Usuario')['Sigla'].to_dict()
+        # Cria um mapa de usuário para setor (Sigla).
+        # Usamos drop_duplicates para garantir que cada usuário tenha apenas um setor associado no mapa.
+        # 'keep='first'' significa que se um usuário aparecer múltiplas vezes com setores diferentes,
+        # o primeiro setor encontrado será o associado.
+        user_to_sector_map = df[['Usuario', 'Sigla']].drop_duplicates(subset=['Usuario'], keep='first').set_index('Usuario')['Sigla'].to_dict()
 
         usuario_counts = df['Usuario'].value_counts().reset_index()
         usuario_counts.columns = ['Usuario', 'Count']
@@ -129,12 +138,21 @@ def process_dashboard_data(df_raw, filters=None):
             {
                 'name': row['Usuario'],
                 'value': row['Count'],
-                'sector': user_to_sector_map.get(row['Usuario'], 'Setor Desconhecido') # Adiciona a informação do setor aqui
+                'sector': user_to_sector_map.get(row['Usuario'], 'Sigla Desconhecida') # Agora busca pela 'Sigla'
             }
             for index, row in usuario_counts.iterrows()
         ]
         # Ordena por valor (Count) decrescente
         bar_chart_data = sorted(bar_chart_data, key=lambda x: x['value'], reverse=True)
+    elif 'Usuario' in df.columns: # Caso a coluna 'Sigla' não exista, mantém o comportamento anterior (sem setor)
+        usuario_counts = df['Usuario'].value_counts().reset_index()
+        usuario_counts.columns = ['Usuario', 'Count']
+        bar_chart_data = [
+            {'name': row['Usuario'], 'value': row['Count']}
+            for index, row in usuario_counts.iterrows()
+        ]
+        bar_chart_data = sorted(bar_chart_data, key=lambda x: x['value'], reverse=True)
+    # Se nem 'Usuario' existir, bar_chart_data permanece vazio, o que é o comportamento esperado.
     elif 'Usuario' in df.columns: # Caso a coluna 'Setor' não exista, mantém o comportamento anterior
         usuario_counts = df['Usuario'].value_counts().reset_index()
         usuario_counts.columns = ['Usuario', 'Count']
