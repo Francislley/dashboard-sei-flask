@@ -5,6 +5,8 @@ import json
 import os
 from datetime import datetime
 
+print("DEBUG: app.py started executing!") # <--- ADICIONE ESTA LINHA AQUI
+
 app = Flask(__name__)
 
 # --- Configurações da Planilha ---
