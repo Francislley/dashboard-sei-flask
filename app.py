@@ -27,7 +27,6 @@ def load_raw_data_from_sheet():
         df = pd.DataFrame(data)
 
         # Limpeza básica: substituir vazios por NA
-        # CORREÇÃO: Evita o FutureWarning do Pandas
         df = df.replace('', pd.NA)
 
         # Tentar padronizar nomes de colunas comuns (com e sem acento)
@@ -35,6 +34,10 @@ def load_raw_data_from_sheet():
             df.rename(columns={'Usuário': 'Usuario'}, inplace=True)
         if 'Descrição' in df.columns and 'Descricao' not in df.columns:
             df.rename(columns={'Descrição': 'Descricao'}, inplace=True)
+        # Assumindo que a coluna I é 'Secretaria Executiva'
+        if 'Secretaria Executiva' in df.columns and 'SecretariaExecutiva' not in df.columns:
+            df.rename(columns={'Secretaria Executiva': 'SecretariaExecutiva'}, inplace=True)
+
 
         # --- DEBUG (load_raw_data): Colunas e primeiras linhas antes do strip ---
         print(f"DEBUG (load_raw_data): Colunas após carga e renomeação: {df.columns.tolist()}")
@@ -42,12 +45,11 @@ def load_raw_data_from_sheet():
         # --- FIM DEBUG ---
 
         # Adicionar stripping de espaços para colunas críticas para garantir correspondência exata
-        for col in ['Usuario', 'Sigla', 'Unidade', 'Processo', 'Documento', 'Descricao', 'CPF']:
+        for col in ['Usuario', 'Sigla', 'Unidade', 'Processo', 'Documento', 'Descricao', 'CPF', 'SecretariaExecutiva']: # ADDED 'SecretariaExecutiva'
             if col in df.columns:
                 # Converte para string antes de aplicar strip, trata NAs
                 df[col] = df[col].astype(str).str.strip()
                 # Substitui strings vazias resultantes do strip por NA novamente
-                # CORREÇÃO: Evita o FutureWarning do Pandas
                 df[col] = df[col].replace('', pd.NA)
         
         # --- DEBUG (load_raw_data): Primeiras linhas após o strip ---
@@ -76,8 +78,9 @@ def process_dashboard_data(df_raw, filters=None):
     # 1. Aplicar Filtro de Busca Rápida (quickSearch)
     quick_search_term = filters.get('quickSearch', '').lower()
     if quick_search_term:
-        # Cria uma máscara booleana para cada linha
-        mask = df.apply(lambda row: row.astype(str).str.lower().str.contains(quick_search_term, na=False).any(), axis=1)
+        # Cria uma máscara booleana para cada linha, incluindo a nova coluna 'SecretariaExecutiva'
+        search_columns = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'SecretariaExecutiva']
+        mask = df.apply(lambda row: any(str(row[col]).lower().find(quick_search_term) != -1 for col in search_columns if col in row.index), axis=1)
         df = df[mask]
 
     # 2. Aplicar Filtros de Combo Multi (unidade, sigla, usuario)
@@ -106,6 +109,34 @@ def process_dashboard_data(df_raw, filters=None):
     total_unidades = df['Unidade'].nunique() if 'Unidade' in df.columns else 0
     total_usuarios = df['Usuario'].nunique() if 'Usuario' in df.columns else 0
 
+    # --- Dados para Gráfico de Secretaria Executiva (Novo Pie Chart) ---
+    secretaria_executiva_pie_data = []
+    if 'SecretariaExecutiva' in df.columns:
+        sec_exec_counts = df['SecretariaExecutiva'].value_counts().reset_index()
+        sec_exec_counts.columns = ['SecretariaExecutiva', 'Count']
+
+        # Mapeamento de siglas para nomes completos
+        full_names_map = {
+            'SEG': 'Secretaria Executiva de Gastos Públicos',
+            'SEL': 'Secretaria Executiva de Licitações',
+            'SEC': 'Secretaria Executiva de Convênios e Contratos',
+            'SMCL': 'Secretaria Municipal de Contratos, Convênios e Licitações'
+        }
+
+        for index, row in sec_exec_counts.iterrows():
+            sigla = row['SecretariaExecutiva']
+            count = row['Count']
+            full_name = full_names_map.get(sigla, sigla) # Usa a sigla se não encontrar o nome completo
+
+            secretaria_executiva_pie_data.append({
+                'name': sigla, # Para o rótulo do gráfico (sigla)
+                'value': count,
+                'fullName': full_name # Para o tooltip (nome completo)
+            })
+        
+        secretaria_executiva_pie_data = sorted(secretaria_executiva_pie_data, key=lambda x: x['value'], reverse=True)
+
+
     # --- Dados para Gráfico de Donut (Distribuição por Unidade/Sigla) ---
     donut_chart_data = []
     if 'Unidade' in df.columns and 'Sigla' in df.columns: # Garante que ambas as colunas existam
@@ -119,8 +150,6 @@ def process_dashboard_data(df_raw, filters=None):
             count = row['Count']
             
             # Pega o nome completo da unidade para o tooltip, associado a esta sigla
-            # Isso pode pegar a primeira unidade encontrada para a sigla, ou você pode ajustar
-            # para pegar todas as unidades ou uma representativa.
             unidade_completa = df[df['Sigla'] == sigla_exibicao]['Unidade'].iloc[0] if not df[df['Sigla'] == sigla_exibicao]['Unidade'].empty else sigla_exibicao
 
             donut_chart_data.append({
@@ -184,7 +213,7 @@ def process_dashboard_data(df_raw, filters=None):
     # --- Dados para Tabela ---
     # Seleciona as colunas na ordem desejada e converte para lista de dicionários
     # Garante que as colunas existam antes de tentar selecioná-las
-    table_columns = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'Data']
+    table_columns = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'Data', 'SecretariaExecutiva'] # ADDED 'SecretariaExecutiva'
     existing_table_columns = [col for col in table_columns if col in df.columns]
     table_data = df[existing_table_columns].to_dict(orient='records')
 
@@ -193,6 +222,7 @@ def process_dashboard_data(df_raw, filters=None):
         'totalDocumentos': total_documentos,
         'totalUnidades': total_unidades,
         'totalUsuarios': total_usuarios,
+        'secretariaExecutivaPieData': secretaria_executiva_pie_data, # ADDED THIS
         'donutChartData': donut_chart_data,
         'barChartData': bar_chart_data,
         'tableData': table_data

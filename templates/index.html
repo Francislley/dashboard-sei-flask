@@ -328,7 +328,12 @@
       transition: transform 0.1s ease-out;
     }
 
-    /* Alturas dos gráficos (donut maior) */
+    /* Alturas dos gráficos */
+    #secretariaExecutivaPieChart { /* NOVO GRÁFICO */
+      height: clamp(320px, 48vw, 460px);
+      width: 90%;
+      margin: 0 auto;
+    }
     #pieChart {
       height: clamp(320px, 48vw, 460px);
       width: 90%; /* Gráfico de donut ocupa 85% do card */
@@ -339,7 +344,6 @@
       width: 95%; /* <--- ADICIONADO: Ocupa 95% da largura do contêiner pai */
       margin: 0 auto; /* <--- ADICIONADO: Centraliza horizontalmente o #barChart dentro do .chart-card */
       height: clamp(340px, 52vw, 520px);
-      /* Se você manteve o painel de informações lateral, remova 'flex: 1;' daqui, pois 'width' e 'margin: auto' farão o trabalho. */
     }
 
     /* Tabela */
@@ -456,6 +460,7 @@
       .container { padding: 12px; }
       .combo { min-height: 48px; }
       .search-global { padding: 12px; }
+      #secretariaExecutivaPieChart { height: 420px; } /* NOVO GRÁFICO */
       #pieChart { height: 420px; }
       #barChart { height: 460px; }
       /* Ajuste de padding e font-size para células da tabela em telas pequenas */
@@ -557,7 +562,16 @@
       </div>
     </section>
 
-    <!-- Gráfico Donut -->
+    <!-- NOVO GRÁFICO: Secretaria Executiva -->
+    <section class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Secretaria Executiva</div>
+        <!-- Não há botões Top N para este gráfico, conforme solicitado -->
+      </div>
+      <div id="secretariaExecutivaPieChart"></div>
+    </section>
+
+    <!-- Gráfico Donut (existente) -->
     <section class="chart-card">
       <div class="chart-header">
         <div class="chart-title">Distribuição por Unidade</div>
@@ -597,6 +611,7 @@
             <th>Sigla</th>
             <th>Usuário</th>
             <th class="cpf-column">CPF</th> <!-- CPF oculto -->
+            <th>Secretaria Executiva</th> <!-- NOVO: Coluna para a nova secretaria -->
             <th class="muted">Data</th>
           </tr>
         </thead>
@@ -649,12 +664,13 @@
       },
       topnPie: document.getElementById('topnPie'),
       topnBar: document.getElementById('topnBar'),
+      secretariaExecutivaPieChart: document.getElementById('secretariaExecutivaPieChart'), // ADDED THIS
       pieChart: document.getElementById('pieChart'),
       barChart: document.getElementById('barChart')
     };
 
-    let pie, bar; // Instâncias dos gráficos ECharts
-    let datePickerInstance; // Instância do Flatpickr
+    let pie, bar, secretariaExecutivaPie; // ADDED 'secretariaExecutivaPie'
+    let datePickerInstance;
 
     // A função deriveSigla NÃO É MAIS NECESSÁRIA no frontend, pois usaremos a coluna 'Sigla' diretamente.
     // Deixei ela comentada para referência, mas ela será removida do código final.
@@ -768,6 +784,7 @@
     function updateDashboardUI(dashboardData) {
       state.filtered = dashboardData.tableData;
       updateKPIs(dashboardData);
+      renderSecretariaExecutivaPie(dashboardData.secretariaExecutivaPieData); // ADDED THIS
       renderPie(dashboardData.donutChartData);
       renderBar(dashboardData.barChartData);
       renderTable(dashboardData.tableData);
@@ -892,6 +909,52 @@
       dom.kpiDocumentos.textContent = data.totalDocumentos;
       dom.kpiUnidades.textContent = data.totalUnidades;
       dom.kpiUsuarios.textContent = data.totalUsuarios;
+    }
+
+    // NOVO GRÁFICO: Secretaria Executiva
+    function renderSecretariaExecutivaPie(aggregatedData) {
+      if (!secretariaExecutivaPie) secretariaExecutivaPie = echarts.init(dom.secretariaExecutivaPieChart);
+      
+      const option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          formatter: p => {
+            // p.data.name é a sigla (SEG, SEL, etc.)
+            // p.data.fullName é o nome completo
+            const pct = p.percent?.toFixed(1) || 0;
+            return `<b>${escapeHtml(p.data.fullName)}</b><br/>Sigla: ${escapeHtml(p.data.name)}<br/>Qtd: ${p.value} (${pct}%)`;
+          }
+        },
+        legend: { show: false },
+        series: [
+          {
+            type: 'pie',
+            radius: ['30%', '55%'],
+            center: ['50%', '50%'],
+            label: {
+              show: true,
+              position: 'outer',
+              alignTo: 'labelLine',
+              edgeDistance: '5%',
+              color: '#e5e7eb',
+              formatter: '{b}', // {b} exibe o 'name' do dado, que é a sigla
+            },
+            labelLine: {
+              show: true,
+              length: 8,
+              length2: 15,
+              smooth: true,
+              minTurnAngle: 30
+            },
+            data: aggregatedData
+          }
+        ]
+      };
+
+      secretariaExecutivaPie.setOption(option, true);
+      // Não há listener de clique para este gráfico, conforme solicitado
+      setTimeout(() => secretariaExecutivaPie.resize(), 0);
     }
 
     // Pie (Donut) — distribuição por Unidade
@@ -1069,6 +1132,7 @@
           <td>${escapeHtml(r.Sigla || '')}</td>
           <td>${escapeHtml(r.Usuario || '')}</td>
           <td class="cpf-column">${escapeHtml(r.CPF || '')}</td>
+          <td>${escapeHtml(r.SecretariaExecutiva || '')}</td> <!-- NOVO: Coluna para a nova secretaria -->
           <td class="muted">${formatDateForDisplay(r.Data || '')}</td>
         `;
         frag.appendChild(tr);
@@ -1076,7 +1140,7 @@
       if (rows.length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 8;
+        td.colSpan = 9; // Aumentado para 9 colunas
         td.className = 'muted';
         td.textContent = 'Nenhum registro encontrado com os filtros atuais.';
         tr.appendChild(td);
@@ -1138,6 +1202,7 @@
     }
 
     function resizeCharts() {
+      if (secretariaExecutivaPie) secretariaExecutivaPie.resize(); // ADDED THIS
       if (pie) pie.resize();
       if (bar) bar.resize();
     }
