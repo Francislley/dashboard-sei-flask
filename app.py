@@ -5,8 +5,6 @@ import json
 import os
 from datetime import datetime
 
-# print("DEBUG: app.py started executing!") # <--- REMOVA ESTA LINHA, NÃO ESTÁ FUNCIONANDO
-
 app = Flask(__name__)
 
 # --- Configurações da Planilha ---
@@ -34,33 +32,21 @@ def load_raw_data_from_sheet():
             df.rename(columns={'Usuário': 'Usuario'}, inplace=True)
         if 'Descrição' in df.columns and 'Descricao' not in df.columns:
             df.rename(columns={'Descrição': 'Descricao'}, inplace=True)
-        # Assumindo que a coluna I é 'Secretaria Executiva'
-        if 'Secretaria Executiva' in df.columns and 'SecretariaExecutiva' not in df.columns:
-            df.rename(columns={'Secretaria Executiva': 'SecretariaExecutiva'}, inplace=True)
+        
+        # CORREÇÃO AQUI: Renomeia a coluna 'Secretaria' para 'SecretariaExecutiva'
+        if 'Secretaria' in df.columns and 'SecretariaExecutiva' not in df.columns:
+            df.rename(columns={'Secretaria': 'SecretariaExecutiva'}, inplace=True)
 
-
-        # --- DEBUG (load_raw_data): Colunas e primeiras linhas antes do strip ---
-        # print(f"DEBUG (load_raw_data): Colunas após carga e renomeação: {df.columns.tolist()}")
-        # print(f"DEBUG (load_raw_data): Primeiras 5 linhas do DataFrame (antes do strip):\n{df.head().to_string()}")
-        # --- FIM DEBUG ---
 
         # Adicionar stripping de espaços para colunas críticas para garantir correspondência exata
-        for col in ['Usuario', 'Sigla', 'Unidade', 'Processo', 'Documento', 'Descricao', 'CPF', 'SecretariaExecutiva']: # ADDED 'SecretariaExecutiva'
+        for col in ['Usuario', 'Sigla', 'Unidade', 'Processo', 'Documento', 'Descricao', 'CPF', 'SecretariaExecutiva']:
             if col in df.columns:
-                # Converte para string antes de aplicar strip, trata NAs
                 df[col] = df[col].astype(str).str.strip()
-                # Substitui strings vazias resultantes do strip por NA novamente
                 df[col] = df[col].replace('', pd.NA)
         
-        # --- DEBUG (load_raw_data): Primeiras linhas após o strip ---
-        # print(f"DEBUG (load_raw_data): Primeiras 5 linhas do DataFrame (após o strip):\n{df.head().to_string()}")
-        # --- FIM DEBUG ---
-
         # Converter coluna 'Data' para datetime, se existir
         if 'Data' in df.columns:
-            # dayfirst=True é crucial se suas datas estão em DD/MM/AAAA
             df['Data'] = pd.to_datetime(df['Data'], errors='coerce', dayfirst=True)
-            # Formata de volta para string YYYY-MM-DD para consistência com JS
             df['Data'] = df['Data'].dt.strftime('%Y-%m-%d').replace({pd.NA: None})
 
         return df
@@ -94,7 +80,7 @@ def process_dashboard_data(df_raw, filters=None):
             if col_name in df.columns:
                 df = df[df[col_name].isin(selected_values)]
             else:
-                pass # print(f"Aviso: Coluna '{col_name}' não encontrada no DataFrame para filtro.")
+                pass
 
 
     # 3. Aplicar Filtro de Data (selectedDateString)
@@ -207,7 +193,7 @@ def process_dashboard_data(df_raw, filters=None):
         'donutChartData': donut_chart_data,
         'barChartData': bar_chart_data,
         'tableData': table_data,
-        'debugInfo': debug_info # INCLUÍDO AQUI
+        'debugInfo': debug_info
     }
 
 # --- Rotas Flask ---
