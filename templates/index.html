@@ -666,7 +666,14 @@
     const state = {
       filtered: [],
       sets: { unidade: [], sigla: [], usuario: [] },
-      selected: { unidade: new Set(), sigla: new Set(), usuario: new Set() },
+      selected: { 
+        unidade: new Set(), 
+        sigla: new Set(), 
+        usuario: new Set(),
+        secretarias: new Set(), // NOVO: Para o gráfico de Distribuição por Secretarias
+        secretariaExecutiva: new Set(), // NOVO: Para o gráfico de Secretaria Executiva
+        tipo: new Set() // NOVO: Para o gráfico de Distribuição por Tipo
+      },
       selectedFlatpickrDate: null,
       search: '',
       topNSecretariasPie: '5', // NOVO
@@ -913,6 +920,9 @@
         unidade: Array.from(state.selected.unidade),
         sigla: Array.from(state.selected.sigla),
         usuario: Array.from(state.selected.usuario),
+        secretarias: Array.from(state.selected.secretarias), // NOVO
+        secretariaExecutiva: Array.from(state.selected.secretariaExecutiva), // NOVO
+        tipo: Array.from(state.selected.tipo), // NOVO
         quickSearch: state.search
       };
 
@@ -990,7 +1000,14 @@
       };
 
       distribuicaoSecretariasPie.setOption(option, true);
-      // Não há listener de clique para este gráfico, conforme solicitado
+      // NOVO: Adiciona listener de clique
+      distribuicaoSecretariasPie.off('click');
+      distribuicaoSecretariasPie.on('click', (p) => {
+        const secretariaToFilter = p.name;
+        if (!secretariaToFilter) return;
+        toggleSelection(state.selected.secretarias, secretariaToFilter);
+        applyFiltersAndRender();
+      });
       setTimeout(() => distribuicaoSecretariasPie.resize(), 0);
     }
 
@@ -1034,7 +1051,14 @@
       };
 
       secretariaExecutivaPie.setOption(option, true);
-      // Não há listener de clique para este gráfico, conforme solicitado
+      // NOVO: Adiciona listener de clique
+      secretariaExecutivaPie.off('click');
+      secretariaExecutivaPie.on('click', (p) => {
+        const siglaExecutivaToFilter = p.name; // O 'name' já é a sigla (SEG, SEL, etc.)
+        if (!siglaExecutivaToFilter) return;
+        toggleSelection(state.selected.secretariaExecutiva, siglaExecutivaToFilter);
+        applyFiltersAndRender();
+      });
       setTimeout(() => secretariaExecutivaPie.resize(), 0);
     }
 
@@ -1276,7 +1300,14 @@
       };
 
       distribuicaoTipoBar.setOption(option, true);
-      // Não há listener de clique para este gráfico, conforme solicitado
+      // NOVO: Adiciona listener de clique
+      distribuicaoTipoBar.off('click');
+      distribuicaoTipoBar.on('click', (p) => {
+        const tipoToFilter = p.name;
+        if (!tipoToFilter) return;
+        toggleSelection(state.selected.tipo, tipoToFilter);
+        applyFiltersAndRender();
+      });
       setTimeout(() => distribuicaoTipoBar.resize(), 0);
     }
 
@@ -1346,6 +1377,9 @@
       const count = (state.selected.unidade.size ? 1 : 0)
         + (state.selected.sigla.size ? 1 : 0)
         + (state.selected.usuario.size ? 1 : 0)
+        + (state.selected.secretarias.size ? 1 : 0) // NOVO
+        + (state.selected.secretariaExecutiva.size ? 1 : 0) // NOVO
+        + (state.selected.tipo.size ? 1 : 0) // NOVO
         + (state.selectedFlatpickrDate ? 1 : 0)
         + (state.search ? 1 : 0);
 
@@ -1357,14 +1391,18 @@
       state.selected.unidade.clear();
       state.selected.sigla.clear();
       state.selected.usuario.clear();
+      state.selected.secretarias.clear(); // NOVO
+      state.selected.secretariaExecutiva.clear(); // NOVO
+      state.selected.tipo.clear(); // NOVO
       state.selectedFlatpickrDate = null;
       datePickerInstance.clear();
       state.search = '';
       dom.inputSearch.value = '';
 
-      makeCombo(dom.combos.unidade, state.sets.unidade, state.selected.unidade, () => updateFabAndCounter());
-      makeCombo(dom.combos.sigla, state.sets.sigla, state.selected.sigla, () => updateFabAndCounter());
-      makeCombo(dom.combos.usuario, state.sets.usuario, state.selected.usuario, () => updateFabAndCounter());
+      // Não é necessário chamar makeCombo novamente para os combos existentes se eles não forem afetados por esses novos filtros
+      // makeCombo(dom.combos.unidade, state.sets.unidade, state.selected.unidade, () => updateFabAndCounter());
+      // makeCombo(dom.combos.sigla, state.sets.sigla, state.selected.sigla, () => updateFabAndCounter());
+      // makeCombo(dom.combos.usuario, state.sets.usuario, state.selected.usuario, () => updateFabAndCounter());
       
       applyFiltersAndRender();
     }

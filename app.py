@@ -83,10 +83,17 @@ def process_dashboard_data(df_raw, filters=None):
         df = df[mask]
 
     # 2. Aplicar Filtros de Combo Multi (unidade, sigla, usuario)
-    for field in ['unidade', 'sigla', 'usuario']:
-        selected_values = filters.get(field, [])
+    # ATUALIZADO: Inclui as novas colunas para filtragem
+    for field_key, col_name in [
+        ('unidade', 'Unidade'),
+        ('sigla', 'Sigla'),
+        ('usuario', 'Usuario'),
+        ('secretarias', 'Secretarias'), # NOVO
+        ('secretariaExecutiva', 'SecretariaExecutiva'), # NOVO
+        ('tipo', 'Tipo') # NOVO
+    ]:
+        selected_values = filters.get(field_key, [])
         if selected_values:
-            col_name = field.capitalize()
             if col_name in df.columns:
                 df = df[df[col_name].isin(selected_values)]
 
@@ -210,11 +217,11 @@ def process_dashboard_data(df_raw, filters=None):
         'totalDocumentos': total_documentos,
         'totalUnidades': total_unidades,
         'totalUsuarios': total_usuarios,
-        'distribuicaoSecretariasPieData': distribuicao_secretarias_pie_data, # NOVO
+        'distribuicaoSecretariasPieData': distribuicao_secretarias_pie_data,
         'secretariaExecutivaPieData': secretaria_executiva_pie_data,
         'donutChartData': donut_chart_data,
         'barChartData': bar_chart_data,
-        'distribuicaoTipoBarData': distribuicao_tipo_bar_data, # NOVO
+        'distribuicaoTipoBarData': distribuicao_tipo_bar_data,
         'tableData': table_data
     }
 
