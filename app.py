@@ -33,13 +33,26 @@ def load_raw_data_from_sheet():
         if 'Descrição' in df.columns and 'Descricao' not in df.columns:
             df.rename(columns={'Descrição': 'Descricao'}, inplace=True)
         
-        # CORREÇÃO AQUI: Renomeia a coluna 'Secretaria' para 'SecretariaExecutiva'
-        if 'Secretaria' in df.columns and 'SecretariaExecutiva' not in df.columns:
-            df.rename(columns={'Secretaria': 'SecretariaExecutiva'}, inplace=True)
+        # Assumindo que a coluna I é "Secretaria Executiva"
+        if 'Secretaria Executiva' in df.columns and 'SecretariaExecutiva' not in df.columns:
+            df.rename(columns={'Secretaria Executiva': 'SecretariaExecutiva'}, inplace=True)
+        
+        # Assumindo que a coluna J é "Secretarias"
+        if 'Secretarias' in df.columns and 'Secretarias' not in df.columns:
+            df.rename(columns={'Secretarias': 'Secretarias'}, inplace=True) # Mantém o nome se já for 'Secretarias'
+        
+        # Assumindo que a coluna K é "Objeto"
+        if 'Objeto' in df.columns and 'Objeto' not in df.columns:
+            df.rename(columns={'Objeto': 'Objeto'}, inplace=True) # Mantém o nome se já for 'Objeto'
+
+        # Assumindo que a coluna L é "Tipo"
+        if 'Tipo' in df.columns and 'Tipo' not in df.columns:
+            df.rename(columns={'Tipo': 'Tipo'}, inplace=True) # Mantém o nome se já for 'Tipo'
 
 
         # Adicionar stripping de espaços para colunas críticas para garantir correspondência exata
-        for col in ['Usuario', 'Sigla', 'Unidade', 'Processo', 'Documento', 'Descricao', 'CPF', 'SecretariaExecutiva']:
+        # Incluindo as novas colunas
+        for col in ['Usuario', 'Sigla', 'Unidade', 'Processo', 'Documento', 'Descricao', 'CPF', 'SecretariaExecutiva', 'Secretarias', 'Objeto', 'Tipo']:
             if col in df.columns:
                 df[col] = df[col].astype(str).str.strip()
                 df[col] = df[col].replace('', pd.NA)
@@ -51,7 +64,7 @@ def load_raw_data_from_sheet():
 
         return df
     except Exception as e:
-        # print(f"Erro ao carregar dados da planilha: {e}")
+        print(f"Erro ao carregar dados da planilha: {e}")
         return pd.DataFrame() # Retorna DataFrame vazio em caso de erro
 
 # --- Função para Processar e Filtrar Dados ---
@@ -60,13 +73,12 @@ def process_dashboard_data(df_raw, filters=None):
         filters = {}
 
     df = df_raw.copy()
-    debug_info = {} # Objeto para armazenar informações de depuração
 
     # 1. Aplicar Filtro de Busca Rápida (quickSearch)
     quick_search_term = filters.get('quickSearch', '').lower()
     if quick_search_term:
-        # Cria uma máscara booleana para cada linha, incluindo a nova coluna 'SecretariaExecutiva'
-        search_columns = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'SecretariaExecutiva']
+        # Incluindo as novas colunas na busca rápida
+        search_columns = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'SecretariaExecutiva', 'Secretarias', 'Objeto', 'Tipo']
         mask = df.apply(lambda row: any(str(row[col]).lower().find(quick_search_term) != -1 for col in search_columns if col in row.index), axis=1)
         df = df[mask]
 
@@ -74,38 +86,40 @@ def process_dashboard_data(df_raw, filters=None):
     for field in ['unidade', 'sigla', 'usuario']:
         selected_values = filters.get(field, [])
         if selected_values:
-            # As colunas na planilha são 'Unidade', 'Sigla', 'Usuario' (com maiúscula)
-            # Verifica se a coluna existe antes de filtrar
             col_name = field.capitalize()
             if col_name in df.columns:
                 df = df[df[col_name].isin(selected_values)]
-            else:
-                pass
-
 
     # 3. Aplicar Filtro de Data (selectedDateString)
     selected_date_str = filters.get('selectedDateString')
     if selected_date_str and 'Data' in df.columns:
-        # Garante que a coluna 'Data' no DataFrame é string no formato YYYY-MM-DD para comparação
         df_date_str = df['Data'].astype(str)
         df = df[df_date_str == selected_date_str]
 
     # --- Calcular KPIs ---
     total_processos = df['Processo'].nunique() if 'Processo' in df.columns else 0
-    total_documentos = len(df) # Contagem de linhas após filtros
+    total_documentos = len(df)
     total_unidades = df['Unidade'].nunique() if 'Unidade' in df.columns else 0
     total_usuarios = df['Usuario'].nunique() if 'Usuario' in df.columns else 0
 
-    # --- Dados para Gráfico de Secretaria Executiva (Novo Pie Chart) ---
+    # --- Dados para Gráfico de Distribuição por Secretarias (NOVO PIE CHART) ---
+    distribuicao_secretarias_pie_data = []
+    if 'Secretarias' in df.columns:
+        sec_counts = df['Secretarias'].value_counts().reset_index()
+        sec_counts.columns = ['Secretarias', 'Count']
+        for index, row in sec_counts.iterrows():
+            distribuicao_secretarias_pie_data.append({
+                'name': row['Secretarias'],
+                'value': row['Count']
+            })
+        distribuicao_secretarias_pie_data = sorted(distribuicao_secretarias_pie_data, key=lambda x: x['value'], reverse=True)
+
+    # --- Dados para Gráfico de Secretaria Executiva (PIE CHART EXISTENTE) ---
     secretaria_executiva_pie_data = []
     if 'SecretariaExecutiva' in df.columns:
-        debug_info['SecretariaExecutiva_UniqueValues'] = df['SecretariaExecutiva'].dropna().unique().tolist()
-
         sec_exec_counts = df['SecretariaExecutiva'].value_counts().reset_index()
         sec_exec_counts.columns = ['SecretariaExecutiva', 'Count']
-        debug_info['SecretariaExecutiva_Counts'] = sec_exec_counts.to_dict(orient='records')
 
-        # Mapeamento de siglas para nomes completos
         full_names_map = {
             'SEG': 'Secretaria Executiva de Gastos Públicos',
             'SEL': 'Secretaria Executiva de Licitações',
@@ -116,41 +130,34 @@ def process_dashboard_data(df_raw, filters=None):
         for index, row in sec_exec_counts.iterrows():
             sigla = row['SecretariaExecutiva']
             count = row['Count']
-            full_name = full_names_map.get(sigla, sigla) # Usa a sigla se não encontrar o nome completo
+            full_name = full_names_map.get(sigla, sigla)
 
             secretaria_executiva_pie_data.append({
-                'name': sigla, # Para o rótulo do gráfico (sigla)
+                'name': sigla,
                 'value': count,
-                'fullName': full_name # Para o tooltip (nome completo)
+                'fullName': full_name
             })
         
         secretaria_executiva_pie_data = sorted(secretaria_executiva_pie_data, key=lambda x: x['value'], reverse=True)
-        debug_info['SecretariaExecutiva_PieData_Final'] = secretaria_executiva_pie_data
-
 
     # --- Dados para Gráfico de Donut (Distribuição por Unidade/Sigla) ---
     donut_chart_data = []
-    if 'Unidade' in df.columns and 'Sigla' in df.columns: # Garante que ambas as colunas existam
-        # Agrega por Sigla para obter a contagem
+    if 'Unidade' in df.columns and 'Sigla' in df.columns:
         sigla_counts = df.groupby('Sigla')['Unidade'].count().reset_index()
         sigla_counts.columns = ['Sigla', 'Count']
 
-        # Prepara os dados para o gráfico
         for index, row in sigla_counts.iterrows():
             sigla_exibicao = row['Sigla']
             count = row['Count']
-            
-            # Pega o nome completo da unidade para o tooltip, associado a esta sigla
             unidade_completa = df[df['Sigla'] == sigla_exibicao]['Unidade'].iloc[0] if not df[df['Sigla'] == sigla_exibicao]['Unidade'].empty else sigla_exibicao
 
             donut_chart_data.append({
-                'name': sigla_exibicao, # Usa a sigla diretamente da coluna
+                'name': sigla_exibicao,
                 'value': count,
-                'unidadeCompleta': unidade_completa, # Nome completo para o tooltip
-                'siglaOriginal': sigla_exibicao # A sigla para o filtro (já é a desejada)
+                'unidadeCompleta': unidade_completa,
+                'siglaOriginal': sigla_exibicao
             })
         
-        # Ordena por valor (Count) decrescente
         donut_chart_data = sorted(donut_chart_data, key=lambda x: x['value'], reverse=True)
 
     # --- Dados para Gráfico de Barras (Documentos por Usuário) ---
@@ -164,7 +171,7 @@ def process_dashboard_data(df_raw, filters=None):
             {
                 'name': row['Usuario'],
                 'value': row['Count'],
-                'sector': user_to_sector_map.get(row['Usuario'], 'Sigla Desconhecida') # Agora busca pela 'Sigla'
+                'sector': user_to_sector_map.get(row['Usuario'], 'Sigla Desconhecida')
             }
             for index, row in usuario_counts.iterrows()
         ]
@@ -179,9 +186,23 @@ def process_dashboard_data(df_raw, filters=None):
         ]
         bar_chart_data = sorted(bar_chart_data, key=lambda x: x['value'], reverse=True)
 
+    # --- Dados para Gráfico de Distribuição por Tipo (NOVO VERTICAL BAR CHART) ---
+    distribuicao_tipo_bar_data = []
+    if 'Tipo' in df.columns:
+        tipo_counts = df['Tipo'].value_counts().reset_index()
+        tipo_counts.columns = ['Tipo', 'Count']
+        for index, row in tipo_counts.iterrows():
+            distribuicao_tipo_bar_data.append({
+                'name': row['Tipo'],
+                'value': row['Count']
+            })
+        distribuicao_tipo_bar_data = sorted(distribuicao_tipo_bar_data, key=lambda x: x['value'], reverse=True)
+
+
     # --- Dados para Tabela ---
-    table_columns = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'Data', 'SecretariaExecutiva']
-    existing_table_columns = [col for col in table_columns if col in df.columns]
+    # Ordem das colunas na tabela, com 'Objeto' como 4ª coluna
+    table_columns_order = ['Processo', 'Documento', 'Descricao', 'Objeto', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'SecretariaExecutiva', 'Secretarias', 'Tipo', 'Data']
+    existing_table_columns = [col for col in table_columns_order if col in df.columns]
     table_data = df[existing_table_columns].to_dict(orient='records')
 
     return {
@@ -189,11 +210,12 @@ def process_dashboard_data(df_raw, filters=None):
         'totalDocumentos': total_documentos,
         'totalUnidades': total_unidades,
         'totalUsuarios': total_usuarios,
+        'distribuicaoSecretariasPieData': distribuicao_secretarias_pie_data, # NOVO
         'secretariaExecutivaPieData': secretaria_executiva_pie_data,
         'donutChartData': donut_chart_data,
         'barChartData': bar_chart_data,
-        'tableData': table_data,
-        'debugInfo': debug_info
+        'distribuicaoTipoBarData': distribuicao_tipo_bar_data, # NOVO
+        'tableData': table_data
     }
 
 # --- Rotas Flask ---

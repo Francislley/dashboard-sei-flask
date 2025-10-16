@@ -329,20 +329,18 @@
     }
 
     /* Alturas dos gráficos */
-    #secretariaExecutivaPieChart { /* NOVO GRÁFICO */
+    #distribuicaoSecretariasPieChart, /* NOVO GRÁFICO */
+    #secretariaExecutivaPieChart,
+    #pieChart {
       height: clamp(320px, 48vw, 460px);
       width: 90%;
       margin: 0 auto;
     }
-    #pieChart {
-      height: clamp(320px, 48vw, 460px);
-      width: 90%; /* Gráfico de donut ocupa 85% do card */
-      margin: 0 auto; /* Centraliza o gráfico dentro do card */
-    }
 
-    #barChart {
-      width: 95%; /* <--- ADICIONADO: Ocupa 95% da largura do contêiner pai */
-      margin: 0 auto; /* <--- ADICIONADO: Centraliza horizontalmente o #barChart dentro do .chart-card */
+    #barChart,
+    #distribuicaoTipoBarChart { /* NOVO GRÁFICO */
+      width: 95%;
+      margin: 0 auto;
       height: clamp(340px, 52vw, 520px);
     }
 
@@ -460,9 +458,11 @@
       .container { padding: 12px; }
       .combo { min-height: 48px; }
       .search-global { padding: 12px; }
-      #secretariaExecutivaPieChart { height: 420px; } /* NOVO GRÁFICO */
+      #distribuicaoSecretariasPieChart, /* NOVO GRÁFICO */
+      #secretariaExecutivaPieChart,
       #pieChart { height: 420px; }
-      #barChart { height: 460px; }
+      #barChart,
+      #distribuicaoTipoBarChart { height: 460px; } /* NOVO GRÁFICO */
       /* Ajuste de padding e font-size para células da tabela em telas pequenas */
       tbody td, thead th {
         padding: 8px 6px;
@@ -562,7 +562,21 @@
       </div>
     </section>
 
-    <!-- NOVO GRÁFICO: Secretaria Executiva -->
+    <!-- NOVO GRÁFICO: Distribuição por Secretarias -->
+    <section class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Distribuição por Secretarias</div>
+        <div class="topn" id="topnSecretariasPie">
+          <button data-n="5" class="active">Top 5</button>
+          <button data-n="10">Top 10</button>
+          <button data-n="15">Top 15</button>
+          <button data-n="all">Todas</button>
+        </div>
+      </div>
+      <div id="distribuicaoSecretariasPieChart"></div>
+    </section>
+
+    <!-- GRÁFICO EXISTENTE: Secretaria Executiva -->
     <section class="chart-card">
       <div class="chart-header">
         <div class="chart-title">Secretaria Executiva</div>
@@ -585,7 +599,7 @@
       <div id="pieChart"></div>
     </section>
 
-    <!-- Gráfico Barras -->
+    <!-- Gráfico Barras (existente) -->
     <section class="chart-card">
       <div class="chart-header">
         <div class="chart-title">Documentos por Usuário</div>
@@ -599,6 +613,20 @@
       <div id="barChart"></div>
     </section>
 
+    <!-- NOVO GRÁFICO: Distribuição por Tipo -->
+    <section class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Distribuição por Tipo</div>
+        <div class="topn" id="topnTipoBar">
+          <button data-n="5" class="active">Top 5</button>
+          <button data-n="10">Top 10</button>
+          <button data-n="15">Top 15</button>
+          <button data-n="all">Todos</button>
+        </div>
+      </div>
+      <div id="distribuicaoTipoBarChart"></div>
+    </section>
+
     <!-- Tabela -->
     <section class="table-card">
       <table>
@@ -607,11 +635,14 @@
             <th>Processo</th>
             <th>Documento</th>
             <th>Descrição</th>
+            <th>Objeto</th> <!-- NOVA COLUNA: 4ª posição -->
             <th>Unidade</th>
             <th>Sigla</th>
             <th>Usuário</th>
             <th class="cpf-column">CPF</th> <!-- CPF oculto -->
-            <th>Secretaria Executiva</th> <!-- NOVO: Coluna para a nova secretaria -->
+            <th>Secretaria Executiva</th>
+            <th>Secretarias</th> <!-- NOVA COLUNA -->
+            <th>Tipo</th> <!-- NOVA COLUNA -->
             <th class="muted">Data</th>
           </tr>
         </thead>
@@ -638,8 +669,10 @@
       selected: { unidade: new Set(), sigla: new Set(), usuario: new Set() },
       selectedFlatpickrDate: null,
       search: '',
+      topNSecretariasPie: '5', // NOVO
       topNPie: '5',
-      topNBar: '5'
+      topNBar: '5',
+      topNTipoBar: '5' // NOVO
     };
 
     // Referências DOM
@@ -662,32 +695,19 @@
         sigla: document.getElementById('comboSigla'),
         usuario: document.getElementById('comboUsuario')
       },
+      topnSecretariasPie: document.getElementById('topnSecretariasPie'), // NOVO
       topnPie: document.getElementById('topnPie'),
       topnBar: document.getElementById('topnBar'),
-      secretariaExecutivaPieChart: document.getElementById('secretariaExecutivaPieChart'), // ADDED THIS
+      topnTipoBar: document.getElementById('topnTipoBar'), // NOVO
+      distribuicaoSecretariasPieChart: document.getElementById('distribuicaoSecretariasPieChart'), // NOVO
+      secretariaExecutivaPieChart: document.getElementById('secretariaExecutivaPieChart'),
       pieChart: document.getElementById('pieChart'),
-      barChart: document.getElementById('barChart')
+      barChart: document.getElementById('barChart'),
+      distribuicaoTipoBarChart: document.getElementById('distribuicaoTipoBarChart') // NOVO
     };
 
-    let pie, bar, secretariaExecutivaPie; // ADDED 'secretariaExecutivaPie'
+    let pie, bar, secretariaExecutivaPie, distribuicaoSecretariasPie, distribuicaoTipoBar; // ATUALIZADO
     let datePickerInstance;
-
-    // A função deriveSigla NÃO É MAIS NECESSÁRIA no frontend, pois usaremos a coluna 'Sigla' diretamente.
-    // Deixei ela comentada para referência, mas ela será removida do código final.
-    /*
-    function deriveSigla(unidade) {
-      const u = String(unidade || '').trim();
-      if (!u) return '';
-      const hyphenIndex = u.indexOf('-');
-      if (hyphenIndex !== -1) {
-        return u.substring(hyphenIndex + 1).trim();
-      }
-      if (u.length >= 2 && u.length <= 5 && u === u.toUpperCase()) {
-        return u;
-      }
-      return '';
-    }
-    */
 
     // Inicialização do dashboard ao carregar a página
     document.addEventListener('DOMContentLoaded', () => {
@@ -704,7 +724,6 @@
                   state.selectedFlatpickrDate = null;
               }
               updateFabAndCounter();
-              // Não chama applyFiltersAndRender() aqui para esperar o botão "Aplicar filtros"
           }
       });
 
@@ -728,7 +747,6 @@
       // Eventos globais para busca e botões de filtro
       dom.inputSearch.addEventListener('input', debounce(() => {
         state.search = dom.inputSearch.value.trim().toLowerCase();
-        // Não chama applyFiltersAndRender() aqui para esperar o botão "Aplicar filtros"
       }, 200));
 
       dom.btnApply.addEventListener('click', () => applyFiltersAndRender());
@@ -736,20 +754,34 @@
       dom.btnClearTop.addEventListener('click', clearAll);
       dom.fabClear.addEventListener('click', clearAll);
 
-      // Controles para Top N dos gráficos (Pizza e Barras)
+      // Controles para Top N dos gráficos
+      dom.topnSecretariasPie.addEventListener('click', (e) => { // NOVO
+        const n = e.target?.dataset?.n;
+        if (!n) return;
+        state.topNSecretariasPie = n;
+        [...dom.topnSecretariasPie.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b.dataset.n === n));
+        applyFiltersAndRender();
+      });
       dom.topnPie.addEventListener('click', (e) => {
         const n = e.target?.dataset?.n;
         if (!n) return;
         state.topNPie = n;
         [...dom.topnPie.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b.dataset.n === n));
-        applyFiltersAndRender(); // Re-aplica filtros para re-renderizar o gráfico com o novo Top N
+        applyFiltersAndRender();
       });
       dom.topnBar.addEventListener('click', (e) => {
         const n = e.target?.dataset?.n;
         if (!n) return;
         state.topNBar = n;
         [...dom.topnBar.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b.dataset.n === n));
-        applyFiltersAndRender(); // Re-aplica filtros para re-renderizar o gráfico com o novo Top N
+        applyFiltersAndRender();
+      });
+      dom.topnTipoBar.addEventListener('click', (e) => { // NOVO
+        const n = e.target?.dataset?.n;
+        if (!n) return;
+        state.topNTipoBar = n;
+        [...dom.topnTipoBar.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b.dataset.n === n));
+        applyFiltersAndRender();
       });
 
       // Redimensionamento dos gráficos ao redimensionar a janela
@@ -784,9 +816,11 @@
     function updateDashboardUI(dashboardData) {
       state.filtered = dashboardData.tableData;
       updateKPIs(dashboardData);
-      renderSecretariaExecutivaPie(dashboardData.secretariaExecutivaPieData); // ADDED THIS
+      renderDistribuicaoSecretariasPie(dashboardData.distribuicaoSecretariasPieData); // NOVO
+      renderSecretariaExecutivaPie(dashboardData.secretariaExecutivaPieData);
       renderPie(dashboardData.donutChartData);
       renderBar(dashboardData.barChartData);
+      renderTipoBar(dashboardData.distribuicaoTipoBarData); // NOVO
       renderTable(dashboardData.tableData);
       updateFabAndCounter();
     }
@@ -911,7 +945,56 @@
       dom.kpiUsuarios.textContent = data.totalUsuarios;
     }
 
-    // NOVO GRÁFICO: Secretaria Executiva
+    // NOVO GRÁFICO: Distribuição por Secretarias (Pie Chart)
+    function renderDistribuicaoSecretariasPie(fullAggregatedData) {
+      if (!distribuicaoSecretariasPie) distribuicaoSecretariasPie = echarts.init(dom.distribuicaoSecretariasPieChart);
+      
+      let pieData = [...fullAggregatedData];
+
+      const n = state.topNSecretariasPie === 'all' ? pieData.length : Number(state.topNSecretariasPie);
+      pieData = pieData.slice(0, n);
+
+      const option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          formatter: p => {
+            const pct = p.percent?.toFixed(1) || 0;
+            return `<b>${escapeHtml(p.name)}</b><br/>Qtd: ${p.value} (${pct}%)`;
+          }
+        },
+        legend: { show: false },
+        series: [
+          {
+            type: 'pie',
+            radius: ['30%', '55%'],
+            center: ['50%', '50%'],
+            label: {
+              show: true,
+              position: 'outer',
+              alignTo: 'labelLine',
+              edgeDistance: '5%',
+              color: '#e5e7eb',
+              formatter: '{b}',
+            },
+            labelLine: {
+              show: true,
+              length: 8,
+              length2: 15,
+              smooth: true,
+              minTurnAngle: 30
+            },
+            data: pieData
+          }
+        ]
+      };
+
+      distribuicaoSecretariasPie.setOption(option, true);
+      // Não há listener de clique para este gráfico, conforme solicitado
+      setTimeout(() => distribuicaoSecretariasPie.resize(), 0);
+    }
+
+    // GRÁFICO EXISTENTE: Secretaria Executiva (Pie Chart)
     function renderSecretariaExecutivaPie(aggregatedData) {
       if (!secretariaExecutivaPie) secretariaExecutivaPie = echarts.init(dom.secretariaExecutivaPieChart);
       
@@ -920,8 +1003,6 @@
         tooltip: {
           trigger: 'item',
           formatter: p => {
-            // p.data.name é a sigla (SEG, SEL, etc.)
-            // p.data.fullName é o nome completo
             const pct = p.percent?.toFixed(1) || 0;
             return `<b>${escapeHtml(p.data.fullName)}</b><br/>Sigla: ${escapeHtml(p.data.name)}<br/>Qtd: ${p.value} (${pct}%)`;
           }
@@ -938,7 +1019,7 @@
               alignTo: 'labelLine',
               edgeDistance: '5%',
               color: '#e5e7eb',
-              formatter: '{b}', // {b} exibe o 'name' do dado, que é a sigla
+              formatter: '{b}',
             },
             labelLine: {
               show: true,
@@ -957,7 +1038,7 @@
       setTimeout(() => secretariaExecutivaPie.resize(), 0);
     }
 
-    // Pie (Donut) — distribuição por Unidade
+    // Gráfico Donut (existente) — distribuição por Unidade
     function renderPie(fullAggregatedData) {
       if (!pie) pie = echarts.init(dom.pieChart);
       
@@ -971,8 +1052,6 @@
         tooltip: {
           trigger: 'item',
           formatter: p => {
-            // p.data.name agora é a sigla da coluna 'Sigla'
-            // p.data.unidadeCompleta é o nome completo da unidade
             const pct = p.percent?.toFixed(1) || 0;
             return `<b>${escapeHtml(p.data.unidadeCompleta)}</b><br/>Sigla: ${escapeHtml(p.data.name)}<br/>Qtd: ${p.value} (${pct}%)`;
           }
@@ -989,7 +1068,7 @@
               alignTo: 'labelLine',
               edgeDistance: '5%',
               color: '#e5e7eb',
-              formatter: '{b}', // {b} exibe o 'name' do dado, que agora é a sigla
+              formatter: '{b}',
             },
             labelLine: {
               show: true,
@@ -1014,7 +1093,7 @@
       setTimeout(() => pie.resize(), 0);
     }
 
-    // Barras — documentos por Usuário
+    // Gráfico Barras (existente) — documentos por Usuário
     function renderBar(fullAggregatedData) {
       if (!bar) bar = echarts.init(dom.barChart);
       
@@ -1024,14 +1103,12 @@
       barData = barData.slice(0, n);
 
       const users = barData.map(d => d.name);
-      // A linha 'const counts = barData.map(d => d.value);' não é mais necessária aqui,
-      // pois passaremos o objeto completo 'barData' para a série.
 
       const option = {
         backgroundColor: 'transparent',
         grid: { 
-          left: '1%', // <--- ALTERADO: 1% da largura do contêiner ECharts para os rótulos do eixo Y
-          right: '0%', // <--- ALTERADO: 0% para que as barras ocupem o restante do espaço à direita
+          left: '1%',
+          right: '0%',
           top: '1%',
           bottom: '3%',
           containLabel: true
@@ -1043,9 +1120,8 @@
             const p = params[0];
             const userName = escapeHtml(p.name);
             const userDocs = p.value;
-            // Acessa a propriedade 'sector' que agora vem do backend (que é a Sigla)
-            const userSector = p.data.sector || 'Sigla Não Informada'; // Alterado para 'Sigla Não Informada'
-            return `<b>${userName}</b><br/>Sigla: ${userSector}<br/>Documentos: ${userDocs}`; // Alterado para 'Sigla:'
+            const userSector = p.data.sector || 'Sigla Não Informada';
+            return `<b>${userName}</b><br/>Sigla: ${userSector}<br/>Documentos: ${userDocs}`;
           },
           confine: true
         },
@@ -1070,13 +1146,13 @@
             overflow: 'truncate',
             ellipsis: '...',
             interval: 0,
-            margin: 5 // <--- ALTERADO: Reduz a margem para evitar que os rótulos empurrem o gráfico para fora em telas pequenas
+            margin: 5
           }
         },
         series: [
           {
             type: 'bar',
-            data: barData, // <--- CORREÇÃO AQUI: Passa o array de objetos completo
+            data: barData,
             barWidth: Math.min(36, Math.max(18, 360 / Math.max(6, barData.length))),
             itemStyle: {
               color: '#60a5fa',
@@ -1086,8 +1162,7 @@
               show: true,
               position: 'right',
               valueAnimation: true,
-              formatter: '{@[0]}', // Isso pode precisar de ajuste se não mostrar o valor correto.
-                                   // Se quiser o valor, pode ser '{c}' ou '{value}'
+              formatter: '{@[0]}',
               color: '#e5e7eb',
               fontSize: 12,
               fontWeight: 'bold',
@@ -1116,6 +1191,96 @@
       setTimeout(() => bar.resize(), 0);
     }
 
+    // NOVO GRÁFICO: Distribuição por Tipo (Vertical Bar Chart)
+    function renderTipoBar(fullAggregatedData) {
+      if (!distribuicaoTipoBar) distribuicaoTipoBar = echarts.init(dom.distribuicaoTipoBarChart);
+      
+      let barData = [...fullAggregatedData];
+
+      const n = state.topNTipoBar === 'all' ? barData.length : Number(state.topNTipoBar);
+      barData = barData.slice(0, n);
+
+      const types = barData.map(d => d.name);
+      const counts = barData.map(d => d.value);
+
+      const option = {
+        backgroundColor: 'transparent',
+        grid: { 
+          left: '1%',
+          right: '0%',
+          top: '1%',
+          bottom: '3%',
+          containLabel: true
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          formatter: (params) => {
+            const p = params[0];
+            const typeName = escapeHtml(p.name);
+            const typeDocs = p.value;
+            return `<b>${typeName}</b><br/>Documentos: ${typeDocs}`;
+          },
+          confine: true
+        },
+        xAxis: {
+          type: 'category', // Eixo X agora é categoria (tipos)
+          data: types,
+          axisTick: { show: false },
+          axisLine: { show: false },
+          axisLabel: {
+            color: '#cbd5e1',
+            interval: 0,
+            rotate: 45, // Rotaciona rótulos para melhor visualização se forem longos
+            margin: 8
+          }
+        },
+        yAxis: {
+          type: 'value', // Eixo Y agora é valor (contagem)
+          name: 'Quantidade de Documentos',
+          nameLocation: 'middle',
+          nameGap: 25,
+          splitLine: { show: false },
+          axisLine: { show: false },
+          axisLabel: { color: '#cbd5e1' }
+        },
+        series: [
+          {
+            type: 'bar',
+            data: counts, // Passa apenas os valores para o gráfico de barras vertical simples
+            barWidth: '60%', // Largura das barras
+            itemStyle: {
+              color: '#22c55e', // Cor verde para este gráfico
+              borderRadius: [4, 4, 0, 0] // Cantos arredondados no topo
+            },
+            label: {
+              show: true,
+              position: 'top', // Rótulo no topo da barra
+              valueAnimation: true,
+              formatter: '{@[0]}',
+              color: '#e5e7eb',
+              fontSize: 12,
+              fontWeight: 'bold',
+              distance: 5
+            },
+            emphasis: {
+              itemStyle: {
+                color: '#16a34a',
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowColor: 'rgba(0, 0, 0, 0.5)'
+              }
+            }
+          }
+        ]
+      };
+
+      distribuicaoTipoBar.setOption(option, true);
+      // Não há listener de clique para este gráfico, conforme solicitado
+      setTimeout(() => distribuicaoTipoBar.resize(), 0);
+    }
+
+
     // Renderiza a tabela de dados
     function renderTable(dataRows) {
       const rows = dataRows.slice(0, 300);
@@ -1128,11 +1293,14 @@
           <td>${escapeHtml(r.Processo || '')}</td>
           <td>${escapeHtml(r.Documento || '')}</td>
           <td>${escapeHtml(r.Descricao || '')}</td>
+          <td>${escapeHtml(r.Objeto || '')}</td> <!-- NOVA COLUNA: 4ª posição -->
           <td>${escapeHtml(r.Unidade || '')}</td>
           <td>${escapeHtml(r.Sigla || '')}</td>
           <td>${escapeHtml(r.Usuario || '')}</td>
           <td class="cpf-column">${escapeHtml(r.CPF || '')}</td>
-          <td>${escapeHtml(r.SecretariaExecutiva || '')}</td> <!-- NOVO: Coluna para a nova secretaria -->
+          <td>${escapeHtml(r.SecretariaExecutiva || '')}</td>
+          <td>${escapeHtml(r.Secretarias || '')}</td> <!-- NOVA COLUNA -->
+          <td>${escapeHtml(r.Tipo || '')}</td> <!-- NOVA COLUNA -->
           <td class="muted">${formatDateForDisplay(r.Data || '')}</td>
         `;
         frag.appendChild(tr);
@@ -1140,7 +1308,7 @@
       if (rows.length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 9; // Aumentado para 9 colunas
+        td.colSpan = 12; // Aumentado para 12 colunas
         td.className = 'muted';
         td.textContent = 'Nenhum registro encontrado com os filtros atuais.';
         tr.appendChild(td);
@@ -1202,9 +1370,11 @@
     }
 
     function resizeCharts() {
-      if (secretariaExecutivaPie) secretariaExecutivaPie.resize(); // ADDED THIS
+      if (distribuicaoSecretariasPie) distribuicaoSecretariasPie.resize(); // NOVO
+      if (secretariaExecutivaPie) secretariaExecutivaPie.resize();
       if (pie) pie.resize();
       if (bar) bar.resize();
+      if (distribuicaoTipoBar) distribuicaoTipoBar.resize(); // NOVO
     }
 
     function debounce(fn, wait) {
