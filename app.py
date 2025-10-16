@@ -5,7 +5,7 @@ import json
 import os
 from datetime import datetime
 
-print("DEBUG: app.py started executing!") # <--- ADICIONE ESTA LINHA AQUI
+# print("DEBUG: app.py started executing!") # <--- REMOVA ESTA LINHA, NÃO ESTÁ FUNCIONANDO
 
 app = Flask(__name__)
 
@@ -40,8 +40,8 @@ def load_raw_data_from_sheet():
 
 
         # --- DEBUG (load_raw_data): Colunas e primeiras linhas antes do strip ---
-        print(f"DEBUG (load_raw_data): Colunas após carga e renomeação: {df.columns.tolist()}")
-        print(f"DEBUG (load_raw_data): Primeiras 5 linhas do DataFrame (antes do strip):\n{df.head().to_string()}")
+        # print(f"DEBUG (load_raw_data): Colunas após carga e renomeação: {df.columns.tolist()}")
+        # print(f"DEBUG (load_raw_data): Primeiras 5 linhas do DataFrame (antes do strip):\n{df.head().to_string()}")
         # --- FIM DEBUG ---
 
         # Adicionar stripping de espaços para colunas críticas para garantir correspondência exata
@@ -53,7 +53,7 @@ def load_raw_data_from_sheet():
                 df[col] = df[col].replace('', pd.NA)
         
         # --- DEBUG (load_raw_data): Primeiras linhas após o strip ---
-        print(f"DEBUG (load_raw_data): Primeiras 5 linhas do DataFrame (após o strip):\n{df.head().to_string()}")
+        # print(f"DEBUG (load_raw_data): Primeiras 5 linhas do DataFrame (após o strip):\n{df.head().to_string()}")
         # --- FIM DEBUG ---
 
         # Converter coluna 'Data' para datetime, se existir
@@ -65,7 +65,7 @@ def load_raw_data_from_sheet():
 
         return df
     except Exception as e:
-        print(f"Erro ao carregar dados da planilha: {e}")
+        # print(f"Erro ao carregar dados da planilha: {e}")
         return pd.DataFrame() # Retorna DataFrame vazio em caso de erro
 
 # --- Função para Processar e Filtrar Dados ---
@@ -74,6 +74,7 @@ def process_dashboard_data(df_raw, filters=None):
         filters = {}
 
     df = df_raw.copy()
+    debug_info = {} # Objeto para armazenar informações de depuração
 
     # 1. Aplicar Filtro de Busca Rápida (quickSearch)
     quick_search_term = filters.get('quickSearch', '').lower()
@@ -93,7 +94,7 @@ def process_dashboard_data(df_raw, filters=None):
             if col_name in df.columns:
                 df = df[df[col_name].isin(selected_values)]
             else:
-                print(f"Aviso: Coluna '{col_name}' não encontrada no DataFrame para filtro.")
+                pass # print(f"Aviso: Coluna '{col_name}' não encontrada no DataFrame para filtro.")
 
 
     # 3. Aplicar Filtro de Data (selectedDateString)
@@ -112,8 +113,11 @@ def process_dashboard_data(df_raw, filters=None):
     # --- Dados para Gráfico de Secretaria Executiva (Novo Pie Chart) ---
     secretaria_executiva_pie_data = []
     if 'SecretariaExecutiva' in df.columns:
+        debug_info['SecretariaExecutiva_UniqueValues'] = df['SecretariaExecutiva'].dropna().unique().tolist()
+
         sec_exec_counts = df['SecretariaExecutiva'].value_counts().reset_index()
         sec_exec_counts.columns = ['SecretariaExecutiva', 'Count']
+        debug_info['SecretariaExecutiva_Counts'] = sec_exec_counts.to_dict(orient='records')
 
         # Mapeamento de siglas para nomes completos
         full_names_map = {
@@ -135,6 +139,7 @@ def process_dashboard_data(df_raw, filters=None):
             })
         
         secretaria_executiva_pie_data = sorted(secretaria_executiva_pie_data, key=lambda x: x['value'], reverse=True)
+        debug_info['SecretariaExecutiva_PieData_Final'] = secretaria_executiva_pie_data
 
 
     # --- Dados para Gráfico de Donut (Distribuição por Unidade/Sigla) ---
@@ -164,24 +169,8 @@ def process_dashboard_data(df_raw, filters=None):
 
     # --- Dados para Gráfico de Barras (Documentos por Usuário) ---
     bar_chart_data = []
-    # Verifica se as colunas 'Usuario' e 'Sigla' existem no DataFrame
     if 'Usuario' in df.columns and 'Sigla' in df.columns:
-        # --- DEBUG (process_dashboard_data): Verifique se as colunas estão presentes no DataFrame filtrado ---
-        print(f"DEBUG (process_dashboard_data): 'Usuario' está em df.columns: {'Usuario' in df.columns}, 'Sigla' está em df.columns: {'Sigla' in df.columns}")
-        print(f"DEBUG (process_dashboard_data): Valores únicos de 'Usuario' (primeiros 5): {df['Usuario'].dropna().unique().tolist()[:5]}...")
-        print(f"DEBUG (process_dashboard_data): Valores únicos de 'Sigla' (primeiros 5): {df['Sigla'].dropna().unique().tolist()[:5]}...")
-        # --- FIM DEBUG ---
-        
-        # Cria um mapa de usuário para setor (Sigla).
-        # Usamos drop_duplicates para garantir que cada usuário tenha apenas um setor associado no mapa.
-        # 'keep='first'' significa que se um usuário aparecer múltiplas vezes com setores diferentes,
-        # o primeiro setor encontrado será o associado.
-        # Garante que 'Usuario' não seja NA antes de usar como índice
         user_to_sector_map = df[['Usuario', 'Sigla']].dropna(subset=['Usuario']).drop_duplicates(subset=['Usuario'], keep='first').set_index('Usuario')['Sigla'].to_dict()
-
-        # --- DEBUG (process_dashboard_data): Verifique o mapa gerado ---
-        print(f"DEBUG (process_dashboard_data): user_to_sector_map (primeiros 5 itens): {list(user_to_sector_map.items())[:5]}...")
-        # --- FIM DEBUG ---
 
         usuario_counts = df['Usuario'].value_counts().reset_index()
         usuario_counts.columns = ['Usuario', 'Count']
@@ -193,14 +182,9 @@ def process_dashboard_data(df_raw, filters=None):
             }
             for index, row in usuario_counts.iterrows()
         ]
-        # Ordena por valor (Count) decrescente
         bar_chart_data = sorted(bar_chart_data, key=lambda x: x['value'], reverse=True)
         
-        # --- DEBUG (process_dashboard_data): Verifique os dados finais do gráfico de barras ---
-        print(f"DEBUG (process_dashboard_data): bar_chart_data final (primeiros 5 itens): {bar_chart_data[:5]}...")
-        # --- FIM DEBUG ---
-
-    elif 'Usuario' in df.columns: # Caso a coluna 'Sigla' não exista, mantém o comportamento anterior (sem setor)
+    elif 'Usuario' in df.columns:
         usuario_counts = df['Usuario'].value_counts().reset_index()
         usuario_counts.columns = ['Usuario', 'Count']
         bar_chart_data = [
@@ -208,12 +192,9 @@ def process_dashboard_data(df_raw, filters=None):
             for index, row in usuario_counts.iterrows()
         ]
         bar_chart_data = sorted(bar_chart_data, key=lambda x: x['value'], reverse=True)
-    # Se nem 'Usuario' existir, bar_chart_data permanece vazio, o que é o comportamento esperado.
 
     # --- Dados para Tabela ---
-    # Seleciona as colunas na ordem desejada e converte para lista de dicionários
-    # Garante que as colunas existam antes de tentar selecioná-las
-    table_columns = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'Data', 'SecretariaExecutiva'] # ADDED 'SecretariaExecutiva'
+    table_columns = ['Processo', 'Documento', 'Descricao', 'Unidade', 'Sigla', 'Usuario', 'CPF', 'Data', 'SecretariaExecutiva']
     existing_table_columns = [col for col in table_columns if col in df.columns]
     table_data = df[existing_table_columns].to_dict(orient='records')
 
@@ -222,10 +203,11 @@ def process_dashboard_data(df_raw, filters=None):
         'totalDocumentos': total_documentos,
         'totalUnidades': total_unidades,
         'totalUsuarios': total_usuarios,
-        'secretariaExecutivaPieData': secretaria_executiva_pie_data, # ADDED THIS
+        'secretariaExecutivaPieData': secretaria_executiva_pie_data,
         'donutChartData': donut_chart_data,
         'barChartData': bar_chart_data,
-        'tableData': table_data
+        'tableData': table_data,
+        'debugInfo': debug_info # INCLUÍDO AQUI
     }
 
 # --- Rotas Flask ---
@@ -241,7 +223,7 @@ def get_initial_data():
     # Obter opções únicas para os filtros (deve ser dos dados BRUTOS)
     filter_options = {
         'unidades': sorted(df_raw['Unidade'].dropna().unique().tolist()) if 'Unidade' in df_raw.columns else [],
-        'siglas': sorted(df_raw['Sigla'].dropna().unique().tolist()) if 'Sigla' in df_raw.columns else [], # Usa a coluna Sigla diretamente
+        'siglas': sorted(df_raw['Sigla'].dropna().unique().tolist()) if 'Sigla' in df_raw.columns else [],
         'usuarios': sorted(df_raw['Usuario'].dropna().unique().tolist()) if 'Usuario' in df_raw.columns else []
     }
 
@@ -255,8 +237,8 @@ def get_initial_data():
 
 @app.route('/api/filter_data', methods=['POST'])
 def get_filtered_data():
-    filters = request.json # Recebe os filtros do frontend
-    df_raw = load_raw_data_from_sheet() # Recarrega os dados brutos
+    filters = request.json
+    df_raw = load_raw_data_from_sheet()
     filtered_dashboard_data = process_dashboard_data(df_raw, filters)
     return jsonify(filtered_dashboard_data)
 
