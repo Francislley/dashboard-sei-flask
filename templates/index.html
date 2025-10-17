@@ -756,6 +756,15 @@
         state.search = dom.inputSearch.value.trim().toLowerCase();
       }, 200));
 
+      // NOVO: Adiciona evento para Enter na busca rápida
+      dom.inputSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          state.search = dom.inputSearch.value.trim().toLowerCase(); // Garante que o estado esteja atualizado
+          applyFiltersAndRender(); // Aplica os filtros imediatamente
+          e.preventDefault(); // Previne o comportamento padrão do Enter (ex: submeter formulário)
+        }
+      });
+
       dom.btnApply.addEventListener('click', () => applyFiltersAndRender());
       dom.btnClear.addEventListener('click', clearAll);
       dom.btnClearTop.addEventListener('click', clearAll);
